@@ -27,16 +27,16 @@ frames used in pitch estimation, which is 10 milliseconds by default.
 
 parser = argparse.ArgumentParser(sys.argv[0], description=description, formatter_class=RawDescriptionHelpFormatter)
 parser.add_argument('wav_file_path', nargs='+',
-                    help='path to the WAV file(s) to run pitch estimation; can be a directory.')
+                    help='path to the WAV file(s) to run pitch estimation; can be a directory')
 parser.add_argument('--output-dir', '-o', default=None,
                     help='directory to save the resulting files; '
-                         'if not given, the output will be produced in the same directory as the input WAV file(s).')
+                         'if not given, the output will be produced in the same directory as the input WAV file(s)')
 parser.add_argument('--skip-salience', '-s', action='store_true',
-                    help='skip saving the salience visualization in PNG')
+                    help='skip saving the salience visualization in a PNG file')
 parser.add_argument('--attach-voicing', '-v', action='store_true',
-                    help='include the voicing predictions the salience plot.')
+                    help='include the voicing predictions the salience plot')
 parser.add_argument('--save-numpy', '-n', action='store_true',
-                    help='save the raw activation matrix to a .npy file')
+                    help='save the salience matrix to a .npy file as well')
 parser.add_argument('--viterbi', '-V', action='store_true',
                     help='perform Viterbi decoding to smooth the pitch curve')
 
@@ -80,7 +80,7 @@ def output_path(file, suffix, output_dir):
     return path
 
 
-def to_local_average_cents(label):
+def to_local_average_cents(salience, center=None):
     """find the weighted average cents near the argmax bin"""
 
     import numpy as np
@@ -89,18 +89,48 @@ def to_local_average_cents(label):
         # the bin number-to-cents mapping
         to_local_average_cents.mapping = np.linspace(0, 7180, 360) + 1997.3794084376191
 
-    if label.ndim == 1:
-        argmax = int(np.argmax(label))
-        start = max(0, argmax - 4)
-        end = min(len(label), argmax + 5)
-        label = label[start:end]
-        product_sum = np.sum(label * to_local_average_cents.mapping[start:end])
-        weight_sum = np.sum(label)
+    if salience.ndim == 1:
+        if center is None:
+            center = int(np.argmax(salience))
+        start = max(0, center - 4)
+        end = min(len(salience), center + 5)
+        salience = salience[start:end]
+        product_sum = np.sum(salience * to_local_average_cents.mapping[start:end])
+        weight_sum = np.sum(salience)
         return product_sum / weight_sum
-    if label.ndim == 2:
-        return np.array([to_local_average_cents(label[i, :]) for i in range(label.shape[0])])
+    if salience.ndim == 2:
+        return np.array([to_local_average_cents(salience[i, :]) for i in range(salience.shape[0])])
 
     raise Exception("label should be either 1d or 2d ndarray")
+
+
+def to_viterbi_cents(salience):
+    """Find the Viterbi path using a transition prior that induces pitch continuity"""
+
+    import numpy as np
+    from hmmlearn import hmm
+
+    # uniform prior on the starting pitch
+    starting = np.ones(360) / 360
+
+    # transition probabilities inducing continuous pitch
+    xx, yy = np.meshgrid(range(360), range(360))
+    transition = np.maximum(12 - abs(xx - yy), 0) + np.ones(shape=(360, 360))
+    transition = transition / np.sum(transition, axis=1)[:, None]
+
+    # emission probability = fixed probability for self, evenly distribute the others
+    self_emission = 0.1
+    emission = np.eye(360) * self_emission + np.ones(shape=(360, 360)) * ((1 - self_emission) / 359)
+
+    # fix the model parameters because we are not optimizing the model
+    model = hmm.MultinomialHMM(360, starting, transition)
+    model.startprob_, model.transmat_, model.emissionprob_ = starting, transition, emission
+
+    # find the Viterbi path
+    observations = np.argmax(salience, axis=1)
+    path = model.predict(observations.reshape(-1, 1), [len(observations)])
+
+    return np.array([to_local_average_cents(salience[i, :], path[i]) for i in range(len(observations))])
 
 
 def process_file(model, file, args):
@@ -139,7 +169,12 @@ def process_file(model, file, args):
     salience = model.predict(frames, verbose=1)
     confidence = np.max(salience, axis=1)
 
-    prediction_hz = 10 * 2 ** (to_local_average_cents(salience) / 1200)
+    if args.viterbi:
+        prediction_cents = to_viterbi_cents(salience)
+    else:
+        prediction_cents = to_local_average_cents(salience)
+
+    prediction_hz = 10 * 2 ** (prediction_cents / 1200)
     prediction_hz[np.isnan(prediction_hz)] = 0
 
     # write prediction as TSV

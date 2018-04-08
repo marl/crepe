@@ -16,5 +16,6 @@ build
 *.egg-info
 
 *.salience.png
+*.salience.npy
 *.f0.csv
 
