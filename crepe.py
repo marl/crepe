@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from __future__ import print_function
 
 import argparse
@@ -29,13 +31,14 @@ parser.add_argument('wav_file_path', nargs='+',
 parser.add_argument('--output-dir', '-o', default=None,
                     help='directory to save the resulting files; '
                          'if not given, the output will be produced in the same directory as the input WAV file(s).')
+parser.add_argument('--skip-salience', '-s', action='store_true',
+                    help='skip saving the salience visualization in PNG')
 parser.add_argument('--attach-voicing', '-v', action='store_true',
                     help='include the voicing predictions the salience plot.')
 parser.add_argument('--save-numpy', '-n', action='store_true',
                     help='save the raw activation matrix to a .npy file')
 parser.add_argument('--viterbi', '-V', action='store_true',
                     help='perform Viterbi decoding to smooth the pitch curve')
-args = parser.parse_args()
 
 
 def build_and_load_model():
@@ -63,17 +66,17 @@ def build_and_load_model():
     y = Dense(360, activation='sigmoid', name="classifier")(y)
 
     model = Model(inputs=x, outputs=y)
-    model.load_weights("crepe.h5")
+    model.load_weights("model.h5")
     model.compile('adam', 'binary_crossentropy')
 
     return model
 
 
-def output_path(file, suffix):
+def output_path(file, suffix, output_dir):
     """return the output path of an output file corresponding to a wav file"""
     path = re.sub(r"(?i).wav$", suffix, file)
-    if args.output_dir is not None:
-        path = os.path.join(args.output_dir, os.path.basename(path))
+    if output_dir is not None:
+        path = os.path.join(output_dir, os.path.basename(path))
     return path
 
 
@@ -100,11 +103,10 @@ def to_local_average_cents(label):
     raise Exception("label should be either 1d or 2d ndarray")
 
 
-def process_file(model, file):
+def process_file(model, file, args):
     """Perform pitch estimation on the file"""
 
     import matplotlib.cm
-    import scipy.misc
     import numpy as np
     from numpy.lib.stride_tricks import as_strided
     from resampy import resample
@@ -120,7 +122,7 @@ def process_file(model, file):
         if srate != model_srate:
             data = resample(data, srate, model_srate)  # resample audio if necessary
     except ValueError:
-        print("CREPE: could not read %s" % file, file=sys.stderr)
+        print("CREPE: Could not read %s" % file, file=sys.stderr)
         raise
 
     # make 1024-sample frames of the audio with hop length of 10 milliseconds
@@ -141,55 +143,64 @@ def process_file(model, file):
     prediction_hz[np.isnan(prediction_hz)] = 0
 
     # write prediction as TSV
-    outfile = output_path(file, ".f0.csv")
-    with open(outfile, 'w') as out:
+    f0_file = output_path(file, ".f0.csv", args.output_dir)
+    with open(f0_file, 'w') as out:
         print('# time,frequency,confidence', file=out)
         for i, freq in enumerate(prediction_hz):
             print("%.2f,%.3f,%.6f" % (i * 0.01, freq, confidence[i]), file=out)
+    print("CREPE: Saved the estimated frequencies and confidence values at {}".format(f0_file))
 
     # save the salience file to a .npy file
     if args.save_numpy:
-        np.save(output_path(file, ".salience.npy"), salience)
+        salience_path = output_path(file, ".salience.npy", args.output_dir)
+        np.save(salience_path, salience)
+        print("CREPE: Saved the salience matrix at {}".format(salience_path))
 
     # save the salience visualization in a PNG file
-    figure_file = re.sub(r"(?i).wav$", ".salience.png", file)
-    if args.output_dir is not None:
-        figure_file = os.path.join(args.output_dir, os.path.basename(figure_file))
+    if not args.skip_salience:
+        from scipy.misc import imsave
+        
+        plot_file = output_path(file, ".salience.png", args.output_dir)
+        salience = np.flip(salience, axis=1)  # to draw the low pitches in the bottom
+        inferno = matplotlib.cm.get_cmap('inferno')
+        image = inferno(salience.transpose())
 
-    salience = np.flip(salience, axis=1)  # to draw the low pitches in the bottom
-    inferno = matplotlib.cm.get_cmap('inferno')
-    image = inferno(salience.transpose())
+        if args.attach_voicing:
+            # attach a soft and hard voicing detection result under the salience plot
+            image = np.pad(image, [(0, 20), (0, 0), (0, 0)], mode='constant')
+            image[-20:-10, :, :] = inferno(confidence)[np.newaxis, :, :]
+            image[-10:, :, :] = inferno((confidence > 0.5).astype(np.float))[np.newaxis, :, :]
 
-    if args.attach_voicing:
-        # attach a soft and hard voicing detection result under the salience plot
-        image = np.pad(image, [(0, 20), (0, 0), (0, 0)], mode='constant')
-        image[-20:-10, :, :] = inferno(confidence)[np.newaxis, :, :]
-        image[-10:, :, :] = inferno((confidence > 0.5).astype(np.float))[np.newaxis, :, :]
-
-    scipy.misc.imsave(figure_file, 255 * image)
+        imsave(plot_file, 255 * image)
+        print("CREPE: Saved the salience plot at {}".format(plot_file))
 
 
 def main():
     """the main procedure; collect the WAV files to process and run the model"""
+    args = parser.parse_args()
     files = []
     for path in args.wav_file_path:
         if os.path.isdir(path):
             found = [file for file in os.listdir(path) if file.lower().endswith('.wav')]
             if len(found) == 0:
-                print('CREPE: no WAV files found in directory {}'.format(path), file=sys.stderr)
+                print('CREPE: No WAV files found in directory {}'.format(path), file=sys.stderr)
             files += [os.path.join(path, file) for file in found]
         elif os.path.isfile(path):
             if not path.lower().endswith('.wav'):
-                print('CREPE: expecting WAV file(s) but got {}'.format(path), file=sys.stderr)
+                print('CREPE: Expecting WAV file(s) but got {}'.format(path), file=sys.stderr)
             files.append(path)
         else:
-            raise ValueError('file or directory not found: {}'.format(path))
+            print('CREPE: File or directory not found: {}'.format(path), file=sys.stderr)
+
+    if len(files) == 0:
+        print('CREPE: No WAV files found in {}, aborting.'.format(args.wav_file_path))
+        sys.exit(-1)
 
     model = build_and_load_model()
 
     for i, file in enumerate(files):
-        print('CREPE: processing {} ... ({}/{})'.format(file, i+1, len(files)), file=sys.stderr)
-        process_file(model, file)
+        print('CREPE: Processing {} ... ({}/{})'.format(file, i+1, len(files)), file=sys.stderr)
+        process_file(model, file, args)
 
 
 if __name__ == "__main__":
