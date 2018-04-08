@@ -115,12 +115,12 @@ def to_viterbi_cents(salience):
 
     # transition probabilities inducing continuous pitch
     xx, yy = np.meshgrid(range(360), range(360))
-    transition = np.maximum(12 - abs(xx - yy), 0) + np.ones(shape=(360, 360))
+    transition = np.maximum(12 - abs(xx - yy), 0)
     transition = transition / np.sum(transition, axis=1)[:, None]
 
     # emission probability = fixed probability for self, evenly distribute the others
     self_emission = 0.1
-    emission = np.eye(360) * self_emission + np.ones(shape=(360, 360)) * ((1 - self_emission) / 359)
+    emission = np.eye(360) * self_emission + np.ones(shape=(360, 360)) * ((1 - self_emission) / 360)
 
     # fix the model parameters because we are not optimizing the model
     model = hmm.MultinomialHMM(360, starting, transition)
