@@ -1,0 +1,17 @@
+*.iml
+*.swp
+.idea
+*.pyc
+*.pyo
+__pycache__
+
+.ipynb_checkpoints
+.pytest_cache
+
+.DS_Store
+thumbs.db
+
+dist
+build
+*.egg-info
+
