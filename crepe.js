@@ -1,4 +1,4 @@
-!function(window) {
+!function() {
   function error(message) {
     document.getElementById('status').innerHTML = 'Error: ' + message;
     return message;
@@ -8,9 +8,9 @@
     document.getElementById('status').innerHTML = message;
   }
 
-  var canvas = document.getElementById('salience');
-  var updateSalience = (function() {
-    const inferno = [
+  // a function that accepts the salince vector in every frame
+  const updateSalience = (function() {
+    const inferno = [ // the 'inferno' colormap from matplotlib
       [  0,  0,  3,255], [  0,  0,  4,255], [  0,  0,  6,255], [  1,  0,  7,255], [  1,  1,  9,255], [  1,  1, 11,255], [  2,  1, 14,255], [  2,  2, 16,255],
       [  3,  2, 18,255], [  4,  3, 20,255], [  4,  3, 22,255], [  5,  4, 24,255], [  6,  4, 27,255], [  7,  5, 29,255], [  8,  6, 31,255], [  9,  6, 33,255],
       [ 10,  7, 35,255], [ 11,  7, 38,255], [ 13,  8, 40,255], [ 14,  8, 42,255], [ 15,  9, 45,255], [ 16,  9, 47,255], [ 18, 10, 50,255], [ 19, 10, 52,255],
@@ -51,16 +51,17 @@
       inferno[i] = array;
     }
 
+    const canvas = document.getElementById('salience');
     const ctx = canvas.getContext('2d');
     const buffer = ctx.createImageData(canvas.width,canvas.height);
     var column = 0;
 
-    return function(data) {
+    return function(salience) {
       for (var i = 0; i < 360; i++) {
-        value = Math.floor(data[i] * 256.0);
-        if (!isNaN(value)) {
-          buffer.data.set(inferno[value], ((canvas.height - 1 - i) * canvas.width + column) * 4);
-        }
+        value = Math.floor(salience[i] * 256.0);
+        if (isNaN(value) || value < 0) value = 0;
+        if (value > 256) value = 1;
+        buffer.data.set(inferno[value], ((canvas.height - 1 - i) * canvas.width + column) * 4);
       }
 
       column = (column + 1) % canvas.width;
@@ -70,6 +71,7 @@
   })();
 
   var audioContext;
+  var running = false;
 
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -80,53 +82,25 @@
     throw e;
   }
 
+  // perform resampling the audio to 16000 Hz, on which the model is trained.
+  // setting a sample rate in AudioContext is not supported by most browsers at the moment.
   function resample(audioBuffer, onComplete) {
-    if (audioBuffer.sampleRate % 16000 == 0) {
-      const multiplier = audioBuffer.sampleRate / 16000;
-      const original = audioBuffer.getChannelData(0);
-      const subsamples = new Float32Array(1024);
-      for (var i = 0; i < 1024; i++) {
+    const interpolate = (audioBuffer.sampleRate % 16000 != 0);
+    const multiplier = audioBuffer.sampleRate / 16000;
+    const original = audioBuffer.getChannelData(0);
+    const subsamples = new Float32Array(1024);
+    for (var i = 0; i < 1024; i++) {
+      if (!interpolate) {
         subsamples[i] = original[i * multiplier];
-      }
-      onComplete(subsamples);
-    } else {
-      const channels = audioBuffer.numberOfChannels;
-      const samples = Math.floor(audioBuffer.length * 16000 / audioBuffer.sampleRate) + 1;
-      const OfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-
-      try {
-        const offlineContext = new OfflineAudioContext(channels, samples, 16000);
-        const bufferSource = offlineContext.createBufferSource();
-        bufferSource.buffer = audioBuffer;
-        bufferSource.connect(offlineContext.destination);
-        bufferSource.start(0);
-        offlineContext.startRendering().then(function(renderedBuffer){
-          onComplete(renderedBuffer.getChannelData(0));
-        })
-      } catch (e) {
-        try {
-          // if the browser doesn't support OfflineAudioContext with 16 kHZ,
-          // resample to 48000 and take one of every three samples
-          const offlineContext = new OfflineAudioContext(channels, samples * 3, 48000);
-          const bufferSource = offlineContext.createBufferSource();
-          bufferSource.buffer = audioBuffer;
-          bufferSource.connect(offlineContext.destination);
-          bufferSource.start(0);
-          offlineContext.oncomplete = function(e) {
-            const original = e.renderedBuffer.getChannelData(0);
-            const subsamples = new Float32Array(1024);
-            for (var i = 0; i < 1024; i++) {
-              subsamples[i] = original[i * 3];
-            }
-            onComplete(subsamples);
-          };
-          offlineContext.startRendering();
-        } catch(e) {
-          error('Could not resample audio: ', e.message);
-          throw e;
-        }
+      } else {
+        // simplistic, linear resampling
+        var left = Math.floor(i * multiplier);
+        var right = left + 1;
+        var p = i * multiplier - left;
+        subsamples[i] = (1 - p) * original[left] + p * original[right];
       }
     }
+    onComplete(subsamples);
   }
 
   const cent_mapping = tf.add(tf.linspace(0, 7180, 360), tf.tensor(1997.3794084376191))
@@ -134,6 +108,9 @@
   function process_microphone_buffer(event) {
     resample(event.inputBuffer, function(resampled) {
       tf.tidy(() => {
+        running = true;
+
+        // run the prediction on the model
         const frame = tf.tensor(resampled.slice(0, 1024));
         const zeromean = tf.sub(frame, tf.mean(frame));
         const framestd = tf.tensor(tf.norm(zeromean).dataSync()/Math.sqrt(1024));
@@ -141,26 +118,29 @@
         const input = normalized.reshape([1, 1024]);
         const salience = model.predict([input]).reshape([360]);
 
+        // the confidence of voicing activity and the argmax bin
         const confidence = salience.max().dataSync()[0];
         const center = salience.argMax().dataSync()[0];
         document.getElementById('voicing-confidence').innerHTML = confidence.toFixed(3);
 
+        // slice the local neighborhood around the argmax bin
         const start = Math.max(0, center - 4);
         const end = Math.min(360, center + 5);
-
         const weights = salience.slice([start], [end - start]);
         const cents = cent_mapping.slice([start], [end - start]);
 
+        // take the local weighted average to get the predicted pitch
         const products = tf.mul(weights, cents);
         const productSum = products.dataSync().reduce((a, b) => a + b, 0);
         const weightSum = weights.dataSync().reduce((a, b) => a + b, 0);
         const predicted_cent = productSum / weightSum;
         const predicted_hz = 10 * Math.pow(2, predicted_cent / 1200.0);
+
+        // update the UI and the salience plot
         var result = (confidence > 0.5) ? predicted_hz.toFixed(3) + ' Hz' : '&nbsp;no voice&nbsp&nbsp;';
         var strlen = result.length;
         for (var i = 0; i < 11 - strlen; i++) result = "&nbsp;" + result;
         document.getElementById('estimated-pitch').innerHTML = result;
-
         updateSalience(salience.dataSync());
       });
     });
@@ -181,12 +161,16 @@
         console.log('Audio context sample rate = ' + audioContext.sampleRate);
         const mic = audioContext.createMediaStreamSource(stream);
 
+        // We need the buffer size that is a power of two and is longer than 1024 samples when resampled to 16000 Hz.
+        // In most platforms where the sample rate is 44.1 kHz or 48 kHz, this will be 4096, giving 10-12 updates/sec.
         const minBufferSize = audioContext.sampleRate / 16000 * 1024;
         for (var bufferSize = 4; bufferSize < minBufferSize; bufferSize *= 2);
         console.log('Buffer size = ' + bufferSize);
         const scriptNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
         scriptNode.onaudioprocess = process_microphone_buffer;
 
+        // It seems necessary to connect the stream to a sink for the pipeline to work, contrary to documentataions.
+        // As a workaround, here we create a gain node with zero gain, and connect temp to the system audio output.
         const gain = audioContext.createGain();
         gain.gain.setValueAtTime(0, audioContext.currentTime);
 
@@ -194,7 +178,7 @@
         scriptNode.connect(gain);
         gain.connect(audioContext.destination);
 
-        status('Running ...')
+        status('Running ...');
       }, function(message) {
         error('Could not access microphone - ' + message);
       });
@@ -207,10 +191,10 @@
       window.model = await tf.loadModel('model/model.json');
       status('Model loading complete');
     } catch (e) {
-      error(e);
+      throw error(e);
     }
     initAudio();
   }
 
   initTF();
-}(window);
+}();
