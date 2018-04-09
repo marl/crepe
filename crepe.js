@@ -22,16 +22,12 @@
   function resample(audioBuffer, onComplete) {
     if (audioBuffer.sampleRate % 16000 == 0) {
       const multiplier = audioBuffer.sampleRate / 16000;
-      const buffer = audioContext.createBuffer(audioBuffer.numberOfChannels, 1024, 16000);
-      for (var c = 0; c < audioBuffer.numberOfChannels; c++) {
-        const original = audioBuffer.getChannelData(c);
-        const destination = buffer.getChannelData(c);
-
-        for (var i = 0; i < 1024; i++) {
-          destination[i] = original[i * multiplier];
-        }
+      const original = audioBuffer.getChannelData(0);
+      const subsamples = new Float32Array(1024);
+      for (var i = 0; i < 1024; i++) {
+        subsamples[i] = original[i * multiplier];
       }
-      onComplete(buffer);
+      onComplete(subsamples);
     } else {
       const channels = audioBuffer.numberOfChannels;
       const samples = Math.floor(audioBuffer.length * 16000 / audioBuffer.sampleRate) + 1;
@@ -44,27 +40,24 @@
         bufferSource.connect(offlineContext.destination);
         bufferSource.start(0);
         offlineContext.startRendering().then(function(renderedBuffer){
-          onComplete(renderedBuffer);
+          onComplete(renderedBuffer.getChannelData(0));
         })
       } catch (e) {
         try {
-          // if the browser only supports 48 kHz, resample to 48000 and take one of every three samples
+          // if the browser doesn't support OfflineAudioContext with 16 kHZ,
+          // resample to 48000 and take one of every three samples
           const offlineContext = new OfflineAudioContext(channels, samples * 3, 48000);
           const bufferSource = offlineContext.createBufferSource();
           bufferSource.buffer = audioBuffer;
           bufferSource.connect(offlineContext.destination);
           bufferSource.start(0);
-          offlineContext.oncomplete = function(renderedBuffer) {
-            const buffer = audioContext.createBuffer(channels, 1024, 16000);
-            for (var c = 0; c < audioBuffer.numberOfChannels; c++) {
-              const original = audioBuffer.getChannelData(c);
-              const destination = buffer.getChannelData(c);
-
-              for (var i = 0; i < 1024; i++) {
-                destination[i] = original[i * 3];
-              }
+          offlineContext.oncomplete = function(e) {
+            const original = e.renderedBuffer.getChannelData(0);
+            const subsamples = new Float32Array(1024);
+            for (var i = 0; i < 1024; i++) {
+              subsamples[i] = original[i * 3];
             }
-            onComplete(buffer);
+            onComplete(subsamples);
           };
           offlineContext.startRendering();
         } catch(e) {
@@ -80,7 +73,7 @@
   function process_microphone_buffer(event) {
     resample(event.inputBuffer, function(resampled) {
       tf.tidy(() => {
-        const frame = tf.tensor(resampled.getChannelData(0).slice(0, 1024));
+        const frame = tf.tensor(resampled.slice(0, 1024));
         const zeromean = tf.sub(frame, tf.mean(frame));
         const framestd = tf.tensor(tf.norm(zeromean).dataSync()/Math.sqrt(1024));
         const normalized = tf.div(zeromean, framestd);
