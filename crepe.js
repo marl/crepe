@@ -1,6 +1,7 @@
 !function(window) {
   function error(message) {
     document.getElementById('status').innerHTML = 'Error: ' + message;
+    alert(message);
     return message;
   }
 
@@ -8,11 +9,13 @@
     document.getElementById('status').innerHTML = message;
   }
 
+  var audioContext;
+
   try {
     var AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audioContext = new AudioContext();
+    audioContext = new AudioContext();
     document.getElementById('srate').innerHTML = audioContext.sampleRate;
-  } except (e) {
+  } catch (e) {
     error('Could not instantiate AudioContext: ' + e);
   }
 
@@ -72,9 +75,10 @@
         const weightSum = weights.dataSync().reduce((a, b) => a + b, 0);
         const predicted_cent = productSum / weightSum;
         const predicted_hz = 10 * Math.pow(2, predicted_cent / 1200.0);
-        const result = (confidence > 0.25) ? predicted_hz.toFixed(3) + ' Hz' : 'no voice';
+        const result = (confidence > 0.5) ? predicted_hz.toFixed(3) + ' Hz' : 'no voice';
         document.getElementById('estimated-pitch').innerHTML = result;
       });
+    });
   }
 
   function initAudio() {
@@ -99,7 +103,7 @@
         scriptNode.onaudioprocess = process_microphone_buffer;
 
         const gain = audioContext.createGain();
-        gain.gain.setTargetAtTime(0, audioContext.currentTime, 0);
+        gain.gain.setValueAtTime(0, audioContext.currentTime);
 
         mic.connect(scriptNode);
         scriptNode.connect(gain);
