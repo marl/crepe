@@ -1,4 +1,7 @@
 !function(window) {
+  var audioContext = new AudioContext();
+  document.getElementById('srate').innerHTML = audioContext.sampleRate
+
   function error(message) {
     document.getElementById('status').innerHTML = 'Error: ' + message;
     return message;
@@ -8,19 +11,32 @@
     document.getElementById('status').innerHTML = message;
   }
 
-  function resample(audioBuffer, targetSampleRate, onComplete) {
-    var channel = audioBuffer.numberOfChannels;
-    var samples = audioBuffer.length * targetSampleRate / audioBuffer.sampleRate;
+  function resample(audioBuffer, onComplete) {
+    if (audioBuffer.sampleRate == 48000) {
+      var buffer = audioContext.createBuffer(audioBuffer.numberOfChannels, 1024, 16000);
+      for (var c = 0; c < audioBuffer.numberOfChannels; c++) {
+        var original = audioBuffer.getChannelData(c);
+        var destination = buffer.getChannelData(c);
 
-    var offlineContext = new OfflineAudioContext(channel, samples, targetSampleRate);
-    var bufferSource = offlineContext.createBufferSource();
-    bufferSource.buffer = audioBuffer;
+        for (var i = 0; i < 1024; i++) {
+          destination[i] = original[i * 3];
+        }
+      }
+      onComplete(buffer);
+    } else {
+      var channel = audioBuffer.numberOfChannels;
+      var samples = audioBuffer.length * 16000 / audioBuffer.sampleRate;
 
-    bufferSource.connect(offlineContext.destination);
-    bufferSource.start(0);
-    offlineContext.startRendering().then(function(renderedBuffer){
-      onComplete(renderedBuffer);
-    })
+      var offlineContext = new OfflineAudioContext(channel, samples, 16000);
+      var bufferSource = offlineContext.createBufferSource();
+      bufferSource.buffer = audioBuffer;
+
+      bufferSource.connect(offlineContext.destination);
+      bufferSource.start(0);
+      offlineContext.startRendering().then(function(renderedBuffer){
+        onComplete(renderedBuffer);
+      })
+    }
   }
 
   var cent_mapping = tf.add(tf.linspace(0, 7180, 360), tf.tensor(1997.3794084376191))
@@ -28,7 +44,7 @@
   function process_microphone_buffer(event) {
     var buffer = event.inputBuffer
 
-    resample(buffer, 16000, function(resampled) {
+    resample(buffer, function(resampled) {
       var frame = resampled.getChannelData(0).slice(0, 1024);
       var salience = model.predict([tf.tensor(frame).reshape([1, 1024])]).reshape([360])
 
@@ -55,13 +71,17 @@
   }
 
   function initAudio() {
-    if (!navigator.getUserMedia)
-        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    if (!navigator.getUserMedia) {
+      if (navigator.mediaDevices) {
+        navigator.getUserMedia = navigator.mediaDevices.getUserMedia;
+      } else {
+        navigator.getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+      }
+    }
     if (navigator.getUserMedia) {
       status('Initializing audio...')
-      navigator.getUserMedia({audio:true}, function(stream) {
+      navigator.getUserMedia({audio: true}, function(stream) {
         status('Setting up AudioContext ...');
-        var audioContext = new AudioContext();
         console.log('Audio context sample rate = ' + audioContext.sampleRate);
         var mic = audioContext.createMediaStreamSource(stream);
 
@@ -82,7 +102,7 @@
       }, function(message) {
         error('Could not access microphone - ' + message);
       });
-    } else error('getUserMedia not available')
+    } else error('getUserMedia not available');
   }
 
   async function initTF() {

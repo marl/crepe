@@ -1,17 +1,26 @@
 body {
   background: black;
-  color: #ccc;
+  color: #eee;
   margin: 0;
   font-family: monospace;
 }
 
+a {
+  color: #999;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
 #container {
   margin: auto;
-  max-width: 1080px;
+  max-width: 720px;
 }
 
 #title {
-  font-size: 24pt;
+  font-size: 18pt;
   text-align: center;
   padding: 20px 0 20px 0;
 }

@@ -7,11 +7,30 @@
 <body>
   <div id="container">
     <div id="title">Convolutional REpresentation for Pitch Estimation</div>
-    <div id="visualization"><canvas id="salience" width="960" height="360"></div>
+    <div><canvas id="salience" width="960" height="360"></div>
     <div id="output">
       Status: <span id="status"></span><br>
       Estimated Pitch: <span id="estimated-pitch">0</span> Hz<br>
       Voicing Confidence: <span id="voicing-confidence">0</span>
+    </div>
+    <div id="info">
+      <br><br>
+      DISCLAIMER: A stripped-down model of CREPE is running on this browser,
+      and the performance of this online demo may not be as good as reported
+      in the <a href="https://arxiv.org/abs/1802.06182">paper</a>.
+      To run the model with the full capacity, clone the repo at
+      <a href="https://github.com/marl/crepe">https://github.com/marl/crepe</a>
+      and follow the instructions in README.md.
+      <br><br>
+      The model is trained on 16 kHz audio, and due to the imperfect resampling
+      in the browser, this demo works best when the hardware sample rate is
+      a multiple of 16000 Hz. Your sample rate is <span id="srate"></span> Hz.
+      <br><br>
+      For further details on this model, please refer to our paper:<br><br>
+      &nbsp;&nbsp;&nbsp; <a href="https://arxiv.org/abs/1802.06182">
+      CREPE: A Convolutional Representation for Pitch Estimation</a><br>
+      &nbsp;&nbsp;&nbsp; Jong Wook Kim, Justin Salamon, Peter Li, Juan Pablo Bello<br>
+      &nbsp;&nbsp;&nbsp; <i>Proceedings of the IEEE Conference on ICASSP, 2018.</i>
     </div>
   </div>
   <script src="tfjs-0.8.0.min.js"></script>
