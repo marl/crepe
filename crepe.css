@@ -1,0 +1,17 @@
+body {
+  background: black;
+  color: #ccc;
+  margin: 0;
+  font-family: monospace;
+}
+
+#container {
+  margin: auto;
+  max-width: 1080px;
+}
+
+#title {
+  font-size: 24pt;
+  text-align: center;
+  padding: 20px 0 20px 0;
+}

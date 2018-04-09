@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head>
+  <title>CREPE Interactive Demo</title>
+  <link rel="stylesheet" href="crepe.css">
+</head>
+<body>
+  <div id="container">
+    <div id="title">Convolutional REpresentation for Pitch Estimation</div>
+    <div id="visualization"><canvas id="salience" width="960" height="360"></div>
+    <div id="output">
+      Status: <span id="status"></span><br>
+      Estimated Pitch: <span id="estimated-pitch">0</span> Hz<br>
+      Voicing Confidence: <span id="voicing-confidence">0</span>
+    </div>
+  </div>
+  <script src="tfjs-0.8.0.min.js"></script>
+  <script src="crepe.js"></script>
+</body>
+</html>
