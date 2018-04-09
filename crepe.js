@@ -15,7 +15,8 @@
     audioContext = new AudioContext();
     document.getElementById('srate').innerHTML = audioContext.sampleRate;
   } catch (e) {
-    error('Could not instantiate AudioContext: ' + e);
+    error('Could not instantiate AudioContext: ' + e.message);
+    throw e;
   }
 
   function resample(audioBuffer, onComplete) {
@@ -32,13 +33,12 @@
       }
       onComplete(buffer);
     } else {
-      const channel = audioBuffer.numberOfChannels;
-      const samples = Math.floor(audioBuffer.length * 16000 / audioBuffer.sampleRate);
-
+      const channels = audioBuffer.numberOfChannels;
+      const samples = Math.floor(audioBuffer.length * 16000 / audioBuffer.sampleRate) + 1;
       const OfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
 
       try {
-        const offlineContext = new OfflineAudioContext(channel, samples, 16000);
+        const offlineContext = new OfflineAudioContext(channels, samples, 16000);
         const bufferSource = offlineContext.createBufferSource();
         bufferSource.buffer = audioBuffer;
         bufferSource.connect(offlineContext.destination);
@@ -47,7 +47,30 @@
           onComplete(renderedBuffer);
         })
       } catch (e) {
-        error('Could not resample audio: ', e);
+        try {
+          // if the browser only supports 48 kHz, resample to 48000 and take one of every three samples
+          const offlineContext = new OfflineAudioContext(channels, samples * 3, 48000);
+          const bufferSource = offlineContext.createBufferSource();
+          bufferSource.buffer = audioBuffer;
+          bufferSource.connect(offlineContext.destination);
+          bufferSource.start(0);
+          offlineContext.oncomplete = function(renderedBuffer) {
+            const buffer = audioContext.createBuffer(channels, 1024, 16000);
+            for (var c = 0; c < audioBuffer.numberOfChannels; c++) {
+              const original = audioBuffer.getChannelData(c);
+              const destination = buffer.getChannelData(c);
+
+              for (var i = 0; i < 1024; i++) {
+                destination[i] = original[i * 3];
+              }
+            }
+            onComplete(buffer);
+          };
+          offlineContext.startRendering();
+        } catch(e) {
+          error('Could not resample audio: ', e.message);
+          throw e;
+        }
       }
     }
   }
