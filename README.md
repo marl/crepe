@@ -8,7 +8,7 @@ CREPE is a monophonic pitch tracker based on a deep convolutional neural network
 Further details are provided in the following paper:
 
 > [CREPE: A Convolutional Representation for Pitch Estimation](https://arxiv.org/abs/1802.06182)<br>
-> Jong Wook Kim, Justin Salamon, Peter Li, Juan Pablo Bello.
+> Jong Wook Kim, Justin Salamon, Peter Li, Juan Pablo Bello.<br>
 > Proceedings of the IEEE International Conference on Acoustics, Speech, and Signal Processing (ICASSP), 2018.
 
 We kindly request that academic publications making use of CREPE cite the aforementioned paper.
