@@ -46,33 +46,30 @@
     resample(event.inputBuffer, function(resampled) {
       tf.tidy(() => {
         const frame = tf.tensor(resampled.getChannelData(0).slice(0, 1024));
-        const mean = tf.mean(frame)
-        const zeromean = tf.sub(frame, mean);
-        const framenorm = tf.norm(zeromean)
-        const framestd = tf.tensor(framenorm.dataSync()/Math.sqrt(1024))
+        const zeromean = tf.sub(frame, tf.mean(frame));
+        const framestd = tf.tensor(tf.norm(zeromean).dataSync()/Math.sqrt(1024));
         const normalized = tf.div(zeromean, framestd);
-        const input = normalized.reshape([1, 1024])
-        const output = model.predict([input])
-        const salience = output.reshape([360]);
-        const confidence = salience.max().dataSync()[0];
-        const argmax = salience.argMax().dataSync()[0];
+        const input = normalized.reshape([1, 1024]);
+        const salience = model.predict([input]).reshape([360]);
 
-        const start = Math.max(0, argmax - 4);
-        const end = Math.min(360, argmax + 5);
+        const confidence = salience.max().dataSync()[0];
+        const center = salience.argMax().dataSync()[0];
+        document.getElementById('voicing-confidence').innerHTML = confidence.toFixed(3);
+
+        const start = Math.max(0, center - 4);
+        const end = Math.min(360, center + 5);
 
         const weights = salience.slice([start], [end - start]);
         const cents = cent_mapping.slice([start], [end - start]);
-        const products = tf.mul(weights, cents)
-        const productSum = tf.sum(products).dataSync()[0]
-        const weightSum = tf.sum(weights).dataSync()[0]
+
+        const products = tf.mul(weights, cents);
+        const productSum = products.dataSync().reduce((a, b) => a + b, 0);
+        const weightSum = weights.dataSync().reduce((a, b) => a + b, 0);
         const predicted_cent = productSum / weightSum;
         const predicted_hz = 10 * Math.pow(2, predicted_cent / 1200.0);
         const result = (confidence > 0.25) ? predicted_hz.toFixed(3) + ' Hz' : 'no voice';
-
         document.getElementById('estimated-pitch').innerHTML = result;
-        document.getElementById('voicing-confidence').innerHTML = confidence.toFixed(3);
       });
-    });
   }
 
   function initAudio() {
