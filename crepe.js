@@ -1,7 +1,4 @@
 !function(window) {
-  const audioContext = new AudioContext();
-  document.getElementById('srate').innerHTML = audioContext.sampleRate
-
   function error(message) {
     document.getElementById('status').innerHTML = 'Error: ' + message;
     return message;
@@ -9,6 +6,14 @@
 
   function status(message) {
     document.getElementById('status').innerHTML = message;
+  }
+
+  try {
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioContext = new AudioContext();
+    document.getElementById('srate').innerHTML = audioContext.sampleRate;
+  } except (e) {
+    error('Could not instantiate AudioContext: ' + e);
   }
 
   function resample(audioBuffer, onComplete) {
