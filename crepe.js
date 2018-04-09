@@ -1,7 +1,6 @@
 !function(window) {
   function error(message) {
     document.getElementById('status').innerHTML = 'Error: ' + message;
-    alert(message);
     return message;
   }
 
@@ -12,7 +11,7 @@
   var audioContext;
 
   try {
-    var AudioContext = window.AudioContext || window.webkitAudioContext;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
     audioContext = new AudioContext();
     document.getElementById('srate').innerHTML = audioContext.sampleRate;
   } catch (e) {
@@ -34,17 +33,22 @@
       onComplete(buffer);
     } else {
       const channel = audioBuffer.numberOfChannels;
-      const samples = audioBuffer.length * 16000 / audioBuffer.sampleRate;
+      const samples = Math.floor(audioBuffer.length * 16000 / audioBuffer.sampleRate);
 
-      const offlineContext = new OfflineAudioContext(channel, samples, 16000);
-      const bufferSource = offlineContext.createBufferSource();
-      bufferSource.buffer = audioBuffer;
+      const OfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
 
-      bufferSource.connect(offlineContext.destination);
-      bufferSource.start(0);
-      offlineContext.startRendering().then(function(renderedBuffer){
-        onComplete(renderedBuffer);
-      })
+      try {
+        const offlineContext = new OfflineAudioContext(channel, samples, 16000);
+        const bufferSource = offlineContext.createBufferSource();
+        bufferSource.buffer = audioBuffer;
+        bufferSource.connect(offlineContext.destination);
+        bufferSource.start(0);
+        offlineContext.startRendering().then(function(renderedBuffer){
+          onComplete(renderedBuffer);
+        })
+      } catch (e) {
+        error('Could not resample audio: ', e);
+      }
     }
   }
 
