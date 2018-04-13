@@ -10,8 +10,12 @@ from argparse import RawDescriptionHelpFormatter
 
 
 def build_and_load_model():
-    """Build the CNN model and load the weights; this needs to exactly match what's saved in the Keras weights file"""
-    from keras.layers import Input, Reshape, Conv2D, BatchNormalization, MaxPooling2D, Dropout, Permute, Flatten, Dense
+    """
+    Build the CNN model and load the weights; this needs to exactly match
+    what's saved in the Keras weights file
+    """
+    from keras.layers import Input, Reshape, Conv2D, BatchNormalization, \
+        MaxPooling2D, Dropout, Permute, Flatten, Dense
     from keras.models import Model
 
     model_capacity = 32
@@ -24,9 +28,11 @@ def build_and_load_model():
     y = Reshape(target_shape=(1024, 1, 1), name='input-reshape')(x)
 
     for layer, filters, width, strides in zip(layers, filters, widths, strides):
-        y = Conv2D(filters, (width, 1), strides=strides, padding='same', activation='relu', name="conv%d" % layer)(y)
+        y = Conv2D(filters, (width, 1), strides=strides, padding='same',
+                   activation='relu', name="conv%d" % layer)(y)
         y = BatchNormalization(name="conv%d-BN" % layer)(y)
-        y = MaxPooling2D(pool_size=(2, 1), strides=None, padding='valid', name="conv%d-maxpool" % layer)(y)
+        y = MaxPooling2D(pool_size=(2, 1), strides=None, padding='valid',
+                         name="conv%d-maxpool" % layer)(y)
         y = Dropout(0.25, name="conv%d-dropout" % layer)(y)
 
     y = Permute((2, 1, 3), name="transpose")(y)
@@ -41,7 +47,9 @@ def build_and_load_model():
 
 
 def output_path(file, suffix, output_dir):
-    """return the output path of an output file corresponding to a wav file"""
+    """
+    return the output path of an output file corresponding to a wav file
+    """
     path = re.sub(r"(?i).wav$", suffix, file)
     if output_dir is not None:
         path = os.path.join(output_dir, os.path.basename(path))
@@ -49,13 +57,16 @@ def output_path(file, suffix, output_dir):
 
 
 def to_local_average_cents(salience, center=None):
-    """find the weighted average cents near the argmax bin"""
+    """
+    find the weighted average cents near the argmax bin
+    """
 
     import numpy as np
 
     if not hasattr(to_local_average_cents, 'cents_mapping'):
         # the bin number-to-cents mapping
-        to_local_average_cents.mapping = np.linspace(0, 7180, 360) + 1997.3794084376191
+        to_local_average_cents.mapping = (
+                np.linspace(0, 7180, 360) + 1997.3794084376191)
 
     if salience.ndim == 1:
         if center is None:
@@ -63,17 +74,22 @@ def to_local_average_cents(salience, center=None):
         start = max(0, center - 4)
         end = min(len(salience), center + 5)
         salience = salience[start:end]
-        product_sum = np.sum(salience * to_local_average_cents.mapping[start:end])
+        product_sum = np.sum(
+            salience * to_local_average_cents.mapping[start:end])
         weight_sum = np.sum(salience)
         return product_sum / weight_sum
     if salience.ndim == 2:
-        return np.array([to_local_average_cents(salience[i, :]) for i in range(salience.shape[0])])
+        return np.array([to_local_average_cents(salience[i, :]) for i in
+                         range(salience.shape[0])])
 
     raise Exception("label should be either 1d or 2d ndarray")
 
 
 def to_viterbi_cents(salience):
-    """Find the Viterbi path using a transition prior that induces pitch continuity"""
+    """
+    Find the Viterbi path using a transition prior that induces pitch
+    continuity.
+    """
 
     import numpy as np
     from hmmlearn import hmm
@@ -86,19 +102,23 @@ def to_viterbi_cents(salience):
     transition = np.maximum(12 - abs(xx - yy), 0)
     transition = transition / np.sum(transition, axis=1)[:, None]
 
-    # emission probability = fixed probability for self, evenly distribute the others
+    # emission probability = fixed probability for self, evenly distribute the
+    # others
     self_emission = 0.1
-    emission = np.eye(360) * self_emission + np.ones(shape=(360, 360)) * ((1 - self_emission) / 360)
+    emission = (np.eye(360) * self_emission + np.ones(shape=(360, 360)) *
+                ((1 - self_emission) / 360))
 
     # fix the model parameters because we are not optimizing the model
     model = hmm.MultinomialHMM(360, starting, transition)
-    model.startprob_, model.transmat_, model.emissionprob_ = starting, transition, emission
+    model.startprob_, model.transmat_, model.emissionprob_ = \
+        starting, transition, emission
 
     # find the Viterbi path
     observations = np.argmax(salience, axis=1)
     path = model.predict(observations.reshape(-1, 1), [len(observations)])
 
-    return np.array([to_local_average_cents(salience[i, :], path[i]) for i in range(len(observations))])
+    return np.array([to_local_average_cents(salience[i, :], path[i]) for i in
+                     range(len(observations))])
 
 
 def process_file(model, file, args):
@@ -118,7 +138,8 @@ def process_file(model, file, args):
             data = data.mean(1)  # make mono
         data = data.astype(np.float32)
         if srate != model_srate:
-            data = resample(data, srate, model_srate)  # resample audio if necessary
+            # resample audio if necessary
+            data = resample(data, srate, model_srate)
     except ValueError:
         print("CREPE: Could not read %s" % file, file=sys.stderr)
         raise
@@ -126,7 +147,8 @@ def process_file(model, file, args):
     # make 1024-sample frames of the audio with hop length of 10 milliseconds
     hop_length = int(model_srate / 100)
     n_frames = 1 + int((len(data) - 1024) / hop_length)
-    frames = as_strided(data, shape=(1024, n_frames), strides=(data.itemsize, hop_length * data.itemsize))
+    frames = as_strided(data, shape=(1024, n_frames),
+                        strides=(data.itemsize, hop_length * data.itemsize))
     frames = frames.transpose()
 
     # normalize each frame -- this is expected by the model
@@ -151,35 +173,42 @@ def process_file(model, file, args):
         print('# time,frequency,confidence', file=out)
         for i, freq in enumerate(prediction_hz):
             print("%.2f,%.3f,%.6f" % (i * 0.01, freq, confidence[i]), file=out)
-    print("CREPE: Saved the estimated frequencies and confidence values at {}".format(f0_file))
+    print("CREPE: Saved the estimated frequencies and confidence values at "
+          "{}".format(f0_file))
 
     # save the salience file to a .npy file
     if args.save_activation:
         activation_path = output_path(file, ".activation.npy", args.output)
         np.save(activation_path, salience)
-        print("CREPE: Saved the activation matrix at {}".format(activation_path))
+        print("CREPE: Saved the activation matrix at {}".format(
+            activation_path))
 
     # save the salience visualization in a PNG file
     if args.save_plot:
         from scipy.misc import imsave
         
         plot_file = output_path(file, ".salience.png", args.output)
-        salience = np.flip(salience, axis=1)  # to draw the low pitches in the bottom
+        # to draw the low pitches in the bottom
+        salience = np.flip(salience, axis=1)
         inferno = matplotlib.cm.get_cmap('inferno')
         image = inferno(salience.transpose())
 
         if args.plot_voicing:
-            # attach a soft and hard voicing detection result under the salience plot
+            # attach a soft and hard voicing detection result under the
+            # salience plot
             image = np.pad(image, [(0, 20), (0, 0), (0, 0)], mode='constant')
             image[-20:-10, :, :] = inferno(confidence)[np.newaxis, :, :]
-            image[-10:, :, :] = inferno((confidence > 0.5).astype(np.float))[np.newaxis, :, :]
+            image[-10:, :, :] = (
+                inferno((confidence > 0.5).astype(np.float))[np.newaxis, :, :])
 
         imsave(plot_file, 255 * image)
         print("CREPE: Saved the salience plot at {}".format(plot_file))
 
 
 def main():
-    """the main procedure; collect the WAV files to process and run the model"""
+    """
+    the main procedure; collect the WAV files to process and run the model
+    """
     args = parser.parse_args()
     files = []
     for path in args.filename:
@@ -251,13 +280,15 @@ if __name__ == "__main__":
                              'curve')
     parser.add_argument('--save-activation', '-a', action='store_true',
                         default=False,
-                        help='save the output activation matrix to a .npy file')
-    parser.add_argument('--save-plot', '-p', action='store_true', default=False,
+                        help='save the output activation matrix to a .npy '
+                             'file')
+    parser.add_argument('--save-plot', '-p', action='store_true',
+                        default=False,
                         help='save a plot of the activation matrix to a .png '
                              'file')
     parser.add_argument('--plot-voicing', '-v', action='store_true',
                         default=False,
-                        help='Plot the voicing prediction on top of the output '
-                             'activation matrix plot')
+                        help='Plot the voicing prediction on top of the '
+                             'output activation matrix plot')
 
     main()
