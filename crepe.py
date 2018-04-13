@@ -170,7 +170,7 @@ def process_file(model, file, args):
     # write prediction as TSV
     f0_file = output_path(file, ".f0.csv", args.output)
     with open(f0_file, 'w') as out:
-        print('# time,frequency,confidence', file=out)
+        print('time,frequency,confidence', file=out)
         for i, freq in enumerate(prediction_hz):
             print("%.2f,%.3f,%.6f" % (i * 0.01, freq, confidence[i]), file=out)
     print("CREPE: Saved the estimated frequencies and confidence values at "
