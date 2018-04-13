@@ -13,7 +13,8 @@ def test_sweep():
 
     result = np.loadtxt(f0_file, delimiter=',')
 
-    # the result should be confident enough about the presence of pitch in every frame
+    # the result should be confident enough about the presence of pitch in every
+    # frame
     assert np.mean(result[:, 2] > 0.5) > 0.99
 
     # the frequencies should be linear
