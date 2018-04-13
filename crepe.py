@@ -218,14 +218,17 @@ def main():
         if os.path.isdir(path):
             found = [file for file in os.listdir(path) if file.lower().endswith('.wav')]
             if len(found) == 0:
-                print('CREPE: No WAV files found in directory {}'.format(path), file=sys.stderr)
+                print('CREPE: No WAV files found in directory {}'.format(path),
+                      file=sys.stderr)
             files += [os.path.join(path, file) for file in found]
         elif os.path.isfile(path):
             if not path.lower().endswith('.wav'):
-                print('CREPE: Expecting WAV file(s) but got {}'.format(path), file=sys.stderr)
+                print('CREPE: Expecting WAV file(s) but got {}'.format(path),
+                      file=sys.stderr)
             files.append(path)
         else:
-            print('CREPE: File or directory not found: {}'.format(path), file=sys.stderr)
+            print('CREPE: File or directory not found: {}'.format(path),
+                  file=sys.stderr)
 
     if len(files) == 0:
         print('CREPE: No WAV files found in {}, aborting.'.format(args.wav_file_path))
@@ -234,7 +237,8 @@ def main():
     model = build_and_load_model()
 
     for i, file in enumerate(files):
-        print('CREPE: Processing {} ... ({}/{})'.format(file, i+1, len(files)), file=sys.stderr)
+        print('CREPE: Processing {} ... ({}/{})'.format(file, i+1, len(files)),
+              file=sys.stderr)
         process_file(model, file, args)
 
 
