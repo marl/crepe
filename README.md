@@ -1,7 +1,7 @@
 CREPE Pitch Tracker [![Build Status](https://travis-ci.org/marl/crepe.svg?branch=master)](https://travis-ci.org/marl/crepe)
 ===================
 
-CREPE is a monophonic pitch tracker based on a deep convolutional neural network operating directly on the time-domain waveform input. CREPE is state-of-the-art (as of early 2018), outperfoming popular pitch trackers such as pYIN and SWIPE:
+CREPE is a monophonic pitch tracker based on a deep convolutional neural network operating directly on the time-domain waveform input. CREPE is state-of-the-art (as of 2018), outperfoming popular pitch trackers such as pYIN and SWIPE:
 
 <p align="center"><img src="https://user-images.githubusercontent.com/3009670/36563051-ee6a69a0-17e6-11e8-8d7b-9a37d16ee7ad.png" width="500"></p>
 
@@ -28,9 +28,9 @@ This repository includes a pre-trained version of the CREPE model for easy use. 
 $ python crepe.py audio_file.wav
 ```
 
-then, the resulting `audio_file.f0.csv` contains the predicted fundamental frequency, along with the confidence on the presence of voicing, is produced for each 10-millisecond frame. 
+The resulting `audio_file.f0.csv` contains 3 columns: the first with timestamps (a 10 ms hop size is used), the second contains the predicted fundamental frequency in Hz, and the third contains the voicing confidence, i.e. the confidence in the presence of a pitch:
 
-    # time,frequency,confidence
+    time,frequency,confidence
     0.00,185.616,0.907112
     0.01,186.764,0.844488
     0.02,188.356,0.798015
@@ -42,9 +42,15 @@ then, the resulting `audio_file.f0.csv` contains the predicted fundamental frequ
     0.08,199.678,0.775208
     ...
 
-In addition, the script saves the salience representation -- the activations in the last layer in the neural network -- is saved as `audio_file.salience.png`. This is how a salience representation looks like for an excerpt of a male singing voice:
+The script can also optionally save the output activation matrix of the model to an npy file (`--save-activation`), where the matrix dimensions are (n_frames, 360) using a hop size of 10 ms (there are 360 pitch bins covering 20 cents each).The script can also output a plot of the activation matrix (`--save-plot`), saved to `audio_file.activation.png` including an optional visual representation of the model's voicing detection (`--plot-voicing`). Here's an example plot of the activation matrix (without the voicing overlay) for an excerpt of male singing voice:
 
 ![salience](https://user-images.githubusercontent.com/266841/38465913-6fa085b0-3aef-11e8-9633-bdd59618ea23.png)
+
+For batch processing of files, you can provide a folder path instead of a file path: 
+```bash
+$ python crepe.py audio_folder
+```
+The script will process all WAV files found inside the folder. 
 
 For more information on the usage, please refer to the help message:
 
