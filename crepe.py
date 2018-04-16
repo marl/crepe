@@ -187,7 +187,7 @@ def process_file(model, file, args):
     if args.save_plot:
         from scipy.misc import imsave
         
-        plot_file = output_path(file, ".salience.png", args.output)
+        plot_file = output_path(file, ".activation.png", args.output)
         # to draw the low pitches in the bottom
         salience = np.flip(salience, axis=1)
         inferno = matplotlib.cm.get_cmap('inferno')
