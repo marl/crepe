@@ -214,7 +214,7 @@ def process_file(model, file, output=None, viterbi=False,
 
     # save the salience visualization in a PNG file
     if save_plot:
-        from scipy.misc import imsave
+        from imageio import imwrite
 
         plot_file = output_path(file, ".activation.png", output)
         # to draw the low pitches in the bottom
@@ -230,7 +230,7 @@ def process_file(model, file, output=None, viterbi=False,
             image[-10:, :, :] = (
                 inferno((confidence > 0.5).astype(np.float))[np.newaxis, :, :])
 
-        imsave(plot_file, 255 * image)
+        imwrite(plot_file, 255 * image)
         print("CREPE: Saved the salience plot at {}".format(plot_file))
 
 
