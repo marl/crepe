@@ -7,6 +7,13 @@ import os
 import re
 import sys
 from argparse import RawDescriptionHelpFormatter
+import numpy as np
+from numpy.lib.stride_tricks import as_strided
+from hmmlearn import hmm
+from resampy import resample
+from scipy.io import wavfile
+import matplotlib.cm
+from imageio import imwrite
 
 
 def build_and_load_model():
@@ -61,8 +68,6 @@ def to_local_average_cents(salience, center=None):
     find the weighted average cents near the argmax bin
     """
 
-    import numpy as np
-
     if not hasattr(to_local_average_cents, 'cents_mapping'):
         # the bin number-to-cents mapping
         to_local_average_cents.mapping = (
@@ -91,8 +96,6 @@ def to_viterbi_cents(salience):
     continuity.
     """
 
-    import numpy as np
-    from hmmlearn import hmm
 
     # uniform prior on the starting pitch
     starting = np.ones(360) / 360
@@ -153,11 +156,7 @@ def process_file(model, file, output=None, viterbi=False,
 
     """
 
-    import matplotlib.cm
-    import numpy as np
-    from numpy.lib.stride_tricks import as_strided
-    from resampy import resample
-    from scipy.io import wavfile
+
 
     model_srate = 16000  # the model is trained on 16kHz audio
 
@@ -214,7 +213,6 @@ def process_file(model, file, output=None, viterbi=False,
 
     # save the salience visualization in a PNG file
     if save_plot:
-        from imageio import imwrite
 
         plot_file = output_path(file, ".activation.png", output)
         # to draw the low pitches in the bottom
