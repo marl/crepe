@@ -121,8 +121,37 @@ def to_viterbi_cents(salience):
                      range(len(observations))])
 
 
-def process_file(model, file, args):
-    """Perform pitch estimation on the file"""
+def process_file(model, file, output=None, viterbi=False,
+                 save_activation=False, save_plot=False, plot_voicing=False):
+    """
+    Use the input model to perform pitch estimation on the input file.
+
+    Parameters
+    ----------
+    model : Keras Model object
+        Pre-trained CREPE model to use for prediction, as returned by
+        crepe.build_and_load_model()
+    file : str
+        Path to WAV file to be analyzed.
+    output : str or None
+        Path to directory for saving output files. If None, output files will
+        be saved to the directory containing the input file.
+    viterbi : bool
+        Apply viterbi smoothing to the estimated pitch curve. False by default.
+    save_activation : bool
+        Save the output activation matrix to an .npy file. False by default.
+    save_plot: bool
+        Save a plot of the output activation matrix to a .png file. False by
+        default.
+    plot_voicing : bool
+        Include a visual representation of the voicing activity detection in
+        the plot of the output activation matrix. False by default, only
+        relevant if save_plot is True.
+
+    Returns
+    -------
+
+    """
 
     import matplotlib.cm
     import numpy as np
@@ -159,7 +188,7 @@ def process_file(model, file, args):
     salience = model.predict(frames, verbose=1)
     confidence = np.max(salience, axis=1)
 
-    if args.viterbi:
+    if viterbi:
         prediction_cents = to_viterbi_cents(salience)
     else:
         prediction_cents = to_local_average_cents(salience)
@@ -168,7 +197,7 @@ def process_file(model, file, args):
     prediction_hz[np.isnan(prediction_hz)] = 0
 
     # write prediction as TSV
-    f0_file = output_path(file, ".f0.csv", args.output)
+    f0_file = output_path(file, ".f0.csv", output)
     with open(f0_file, 'w') as out:
         print('time,frequency,confidence', file=out)
         for i, freq in enumerate(prediction_hz):
@@ -177,23 +206,23 @@ def process_file(model, file, args):
           "{}".format(f0_file))
 
     # save the salience file to a .npy file
-    if args.save_activation:
-        activation_path = output_path(file, ".activation.npy", args.output)
+    if save_activation:
+        activation_path = output_path(file, ".activation.npy", output)
         np.save(activation_path, salience)
         print("CREPE: Saved the activation matrix at {}".format(
             activation_path))
 
     # save the salience visualization in a PNG file
-    if args.save_plot:
+    if save_plot:
         from scipy.misc import imsave
-        
-        plot_file = output_path(file, ".activation.png", args.output)
+
+        plot_file = output_path(file, ".activation.png", output)
         # to draw the low pitches in the bottom
         salience = np.flip(salience, axis=1)
         inferno = matplotlib.cm.get_cmap('inferno')
         image = inferno(salience.transpose())
 
-        if args.plot_voicing:
+        if plot_voicing:
             # attach a soft and hard voicing detection result under the
             # salience plot
             image = np.pad(image, [(0, 20), (0, 0), (0, 0)], mode='constant')
@@ -205,13 +234,35 @@ def process_file(model, file, args):
         print("CREPE: Saved the salience plot at {}".format(plot_file))
 
 
-def main():
+def main(filename, output=None, viterbi=False, save_activation=False,
+         save_plot=False, plot_voicing=False):
     """
-    the main procedure; collect the WAV files to process and run the model
+    Collect the WAV files to process and run the model
+
+    Parameters
+    ----------
+    filename : list
+        List containing paths to WAV files or folders containing WAV files to
+        be analyzed.
+    output : str or None
+        Path to directory for saving output files. If None, output files will
+        be saved to the directory containing the input file.
+    viterbi : bool
+        Apply viterbi smoothing to the estimated pitch curve. False by default.
+    save_activation : bool
+        Save the output activation matrix to an .npy file. False by default.
+    save_plot: bool
+        Save a plot of the output activation matrix to a .png file. False by
+        default.
+    plot_voicing : bool
+        Include a visual representation of the voicing activity detection in
+        the plot of the output activation matrix. False by default, only
+        relevant if save_plot is True.
+
     """
-    args = parser.parse_args()
+
     files = []
-    for path in args.filename:
+    for path in filename:
         if os.path.isdir(path):
             found = ([file for file in os.listdir(path) if
                       file.lower().endswith('.wav')])
@@ -229,16 +280,17 @@ def main():
                   file=sys.stderr)
 
     if len(files) == 0:
-        print('CREPE: No WAV files found in {}, aborting.'.format(
-            args.filename))
+        print('CREPE: No WAV files found in {}, aborting.'.format(filename))
         sys.exit(-1)
 
+    # Load pre-trained CREPE model
     model = build_and_load_model()
 
     for i, file in enumerate(files):
         print('CREPE: Processing {} ... ({}/{})'.format(file, i+1, len(files)),
               file=sys.stderr)
-        process_file(model, file, args)
+        process_file(model, file, output, viterbi, save_activation, save_plot,
+                     plot_voicing)
 
 
 if __name__ == "__main__":
@@ -272,9 +324,10 @@ if __name__ == "__main__":
                         help='path to one ore more WAV file(s) to analyze OR '
                              'can be a directory')
     parser.add_argument('--output', '-o', default=None,
-                        help='directory to save the ouptut file(s); '
-                             'if not given, the output will be saved to the '
-                             'same directory as the input WAV file(s)')
+                        help='directory to save the ouptut file(s), must '
+                             'already exist; if not given, the output will be '
+                             'saved to the same directory as the input WAV '
+                             'file(s)')
     parser.add_argument('--viterbi', '-V', action='store_true', default=False,
                         help='perform Viterbi decoding to smooth the pitch '
                              'curve')
@@ -291,4 +344,7 @@ if __name__ == "__main__":
                         help='Plot the voicing prediction on top of the '
                              'output activation matrix plot')
 
-    main()
+    args = parser.parse_args()
+
+    main(args.filename, args.output, args.viterbi, args.save_activation,
+         args.save_plot, args.plot_voicing)
