@@ -52,7 +52,9 @@ def build_and_load_model():
         y = Dense(360, activation='sigmoid', name="classifier")(y)
 
         model = Model(inputs=x, outputs=y)
-        model.load_weights("model.h5")
+
+        package_dir = os.path.dirname(os.path.realpath(__file__))
+        model.load_weights(os.path.join(package_dir, "model.h5"))
         model.compile('adam', 'binary_crossentropy')
 
 
