@@ -8,7 +8,7 @@ crepe = (function() {
     document.getElementById('status').innerHTML = message;
   }
 
-  // a function that accepts the salince vector in every frame
+  // a function that accepts the activation vector for each frame
   const updateActivation = (function() {
     const inferno = [ // the 'inferno' colormap from matplotlib
       [  0,  0,  3,255], [  0,  0,  4,255], [  0,  0,  6,255], [  1,  0,  7,255], [  1,  1,  9,255], [  1,  1, 11,255], [  2,  1, 14,255], [  2,  2, 16,255],
@@ -45,6 +45,8 @@ crepe = (function() {
       [243,246,137,255], [244,247,141,255], [245,248,145,255], [246,250,149,255], [247,251,153,255], [249,252,157,255], [250,253,160,255], [252,254,164,255],
       [252,254,164,255]
     ];
+
+    // store the array for
     for (var i = 0; i < inferno.length; i++) {
       array = new Uint8ClampedArray(4);
       array.set(inferno[i]);
@@ -57,6 +59,7 @@ crepe = (function() {
     var column = 0;
 
     return function(activation) {
+      // render
       for (var i = 0; i < 360; i++) {
         value = Math.floor(activation[i] * 256.0);
         if (isNaN(value) || value < 0) value = 0;
@@ -103,6 +106,7 @@ crepe = (function() {
     onComplete(subsamples);
   }
 
+  // bin number -> cent value mapping
   const cent_mapping = tf.add(tf.linspace(0, 7180, 360), tf.tensor(1997.3794084376191))
 
   function process_microphone_buffer(event) {
@@ -181,8 +185,8 @@ crepe = (function() {
         if (audioContext.state === 'running') {
           status('Running ...');
         } else {
-          // user gesture (like click) is required to start AudioContext, in some cases
-          status('<a href="javascript:crepe.resume();" style="color:red;">*** Click here to start AudioContext ***</a>')
+          // user gesture (like click) is required to start AudioContext, in some browser versions
+          status('<a href="javascript:crepe.resume();" style="color:red;">* Click here to start the demo *</a>')
         }
       }, function(message) {
         error('Could not access microphone - ' + message);
