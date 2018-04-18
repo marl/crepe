@@ -1,7 +1,7 @@
 import os
 import sys
 import bz2
-import importlib
+import imp
 from setuptools import setup, find_packages
 
 weight_file = 'model.h5'
@@ -18,9 +18,11 @@ else:
                 target.write(source.read())
         print('Decompression complete')
 
+version = imp.load_source('crepe.version', os.path.join('crepe', 'version.py'))
+
 setup(
     name='crepe',
-    version=importlib.import_module('crepe.version').version,
+    version=version.version,
     description='CREPE pitch tracker',
     url='https://github.com/marl/crepe',
     author='Jong Wook Kim',
