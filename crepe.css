@@ -14,6 +14,10 @@ a:hover {
   text-decoration: underline;
 }
 
+#activation {
+  background: black;
+}
+
 #container {
   margin: auto;
   max-width: 960px;
