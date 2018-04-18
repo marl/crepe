@@ -1,6 +1,7 @@
 import os
 import sys
 import bz2
+import importlib
 from setuptools import setup, find_packages
 
 weight_file = 'model.h5'
@@ -19,7 +20,7 @@ else:
 
 setup(
     name='crepe',
-    version='0.0.1',
+    version=importlib.import_module('crepe.version').version,
     description='CREPE pitch tracker',
     url='https://github.com/marl/crepe',
     author='Jong Wook Kim',
