@@ -12,7 +12,7 @@ else:
     # in all other cases, decompress the weights file if necessary
     if not os.path.isfile(os.path.join('crepe', 'model.h5')):
         print('Decompressing the model weights ...')
-        with bz2.open(os.path.join('crepe', 'model.h5.bz2'), 'rb') as source:
+        with bz2.BZ2File(os.path.join('crepe', 'model.h5.bz2'), 'rb') as source:
             with open(os.path.join('crepe', 'model.h5'), 'wb') as target:
                 target.write(source.read())
         print('Decompression complete')
