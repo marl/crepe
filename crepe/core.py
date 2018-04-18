@@ -5,6 +5,7 @@ import re
 import sys
 import wave
 
+import pysndfile
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
@@ -240,21 +241,7 @@ def process_file(file, output=None, viterbi=False,
     build_and_load_model()
 
     try:
-        with wave.open(file) as f:
-            params = f.getparams()
-
-            if params.sampwidth == 1:
-                dtype = np.int8
-            elif params.sampwidth == 2:
-                dtype = np.int16
-            else:
-                err = 'unsupported sample with: {}'.format(params.sampwidth)
-                raise ValueError(err)
-
-            buffer = f.readframes(params.nframes)
-            shape = (params.nframes, params.nchannels)
-            audio = np.frombuffer(buffer, dtype).reshape(shape)
-            sr = params.framerate
+        audio, sr, _ = pysndfile.sndio.read(file)
     except ValueError:
         print("CREPE: Could not read %s" % file, file=sys.stderr)
         raise

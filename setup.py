@@ -50,9 +50,10 @@ setup(
         'matplotlib>=2.1.0',
         'resampy>=0.2.0,<0.3.0',
         'h5py>=2.7.0,<3.0.0',
-        'hmmlearn==0.2.0,<0.3.0',
+        'hmmlearn>=0.2.0,<0.3.0',
         'imageio>=2.3.0',
-        'scikit-learn>=0.16'
+        'scikit-learn>=0.16',
+        'pysndfile>=1.1.0'
     ],
     package_data={
         'crepe': [weight_file]
