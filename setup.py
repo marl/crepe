@@ -1,4 +1,21 @@
+import os
+import sys
+import bz2
 from setuptools import setup, find_packages
+
+weight_file = 'model.h5'
+
+if len(sys.argv) > 1 and sys.argv[1] == 'sdist':
+    # include the compressed weights file in sdist
+    weight_file = 'model.h5.bz2'
+else:
+    # in all other cases, decompress the weights file if necessary
+    if not os.path.isfile(os.path.join('crepe', 'model.h5')):
+        print('Decompressing the model weights ...')
+        with bz2.open(os.path.join('crepe', 'model.h5.bz2'), 'rb') as source:
+            with open(os.path.join('crepe', 'model.h5'), 'wb') as target:
+                target.write(source.read())
+        print('Decompression complete')
 
 setup(
     name='crepe',
@@ -27,8 +44,18 @@ setup(
         'Source': 'https://github.com/marl/crepe',
         'Tracker': 'https://github.com/marl/crepe/issues'
     },
-    install_requires=open('requirements.txt').read().split('\n'),
+    install_requires=[
+        'keras==2.1.5',
+        'numpy>=1.14.0',
+        'scipy>=1.0.0',
+        'matplotlib>=2.1.0',
+        'resampy>=0.2.0,<0.3.0',
+        'h5py>=2.7.0,<3.0.0',
+        'hmmlearn==0.2.0,<0.3.0',
+        'imageio>=2.3.0',
+        'scikit-learn>=0.16'
+    ],
     package_data={
-        'crepe': ['model.h5']
+        'crepe': [weight_file]
     },
 )

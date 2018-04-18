@@ -19,3 +19,4 @@ build
 *.salience.npy
 *.f0.csv
 
+crepe/model.h5
