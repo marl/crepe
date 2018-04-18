@@ -5,6 +5,6 @@ python:
   - "3.6"
 install:
   - pip install tensorflow pytest
-  - pip install -r requirements.txt
+  - pip install .
 script:
-  - python -m pytest
+  - pytest
