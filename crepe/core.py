@@ -3,14 +3,10 @@ from __future__ import print_function
 import os
 import re
 import sys
+import wave
 
-import matplotlib.cm
 import numpy as np
-from hmmlearn import hmm
-from imageio import imwrite
 from numpy.lib.stride_tricks import as_strided
-from resampy import resample
-from scipy.io import wavfile
 
 # store as a global variable, since only one model is supported at the moment
 model = None
@@ -100,6 +96,7 @@ def to_viterbi_cents(salience):
     Find the Viterbi path using a transition prior that induces pitch
     continuity.
     """
+    from hmmlearn import hmm
 
     # uniform prior on the starting pitch
     starting = np.ones(360) / 360
@@ -149,6 +146,7 @@ def get_activation(audio, sr):
     audio = audio.astype(np.float32)
     if sr != model_srate:
         # resample audio if necessary
+        from resampy import resample
         audio = resample(audio, sr, model_srate)
 
     # make 1024-sample frames of the audio with hop length of 10 milliseconds
@@ -242,7 +240,21 @@ def process_file(file, output=None, viterbi=False,
     build_and_load_model()
 
     try:
-        sr, audio = wavfile.read(file)
+        with wave.open(file) as f:
+            params = f.getparams()
+
+            if params.sampwidth == 1:
+                dtype = np.int8
+            elif params.sampwidth == 2:
+                dtype = np.int16
+            else:
+                err = 'unsupported sample with: {}'.format(params.sampwidth)
+                raise ValueError(err)
+
+            buffer = f.readframes(params.nframes)
+            shape = (params.nframes, params.nchannels)
+            audio = np.frombuffer(buffer, dtype).reshape(shape)
+            sr = params.framerate
     except ValueError:
         print("CREPE: Could not read %s" % file, file=sys.stderr)
         raise
@@ -265,6 +277,9 @@ def process_file(file, output=None, viterbi=False,
 
     # save the salience visualization in a PNG file
     if save_plot:
+        import matplotlib.cm
+        from imageio import imwrite
+
         plot_file = output_path(file, ".activation.png", output)
         # to draw the low pitches in the bottom
         salience = np.flip(activation, axis=1)

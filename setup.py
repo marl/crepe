@@ -47,7 +47,6 @@ setup(
     install_requires=[
         'keras==2.1.5',
         'numpy>=1.14.0',
-        'scipy>=1.0.0',
         'matplotlib>=2.1.0',
         'resampy>=0.2.0,<0.3.0',
         'h5py>=2.7.0,<3.0.0',
