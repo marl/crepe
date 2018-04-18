@@ -1,4 +1,4 @@
-!function() {
+crepe = (function() {
   function error(message) {
     document.getElementById('status').innerHTML = 'Error: ' + message;
     return message;
@@ -9,7 +9,7 @@
   }
 
   // a function that accepts the salince vector in every frame
-  const updateSalience = (function() {
+  const updateActivation = (function() {
     const inferno = [ // the 'inferno' colormap from matplotlib
       [  0,  0,  3,255], [  0,  0,  4,255], [  0,  0,  6,255], [  1,  0,  7,255], [  1,  1,  9,255], [  1,  1, 11,255], [  2,  1, 14,255], [  2,  2, 16,255],
       [  3,  2, 18,255], [  4,  3, 20,255], [  4,  3, 22,255], [  5,  4, 24,255], [  6,  4, 27,255], [  7,  5, 29,255], [  8,  6, 31,255], [  9,  6, 33,255],
@@ -51,14 +51,14 @@
       inferno[i] = array;
     }
 
-    const canvas = document.getElementById('salience');
+    const canvas = document.getElementById('activation');
     const ctx = canvas.getContext('2d');
     const buffer = ctx.createImageData(canvas.width,canvas.height);
     var column = 0;
 
-    return function(salience) {
+    return function(activation) {
       for (var i = 0; i < 360; i++) {
-        value = Math.floor(salience[i] * 256.0);
+        value = Math.floor(activation[i] * 256.0);
         if (isNaN(value) || value < 0) value = 0;
         if (value > 256) value = 1;
         buffer.data.set(inferno[value], ((canvas.height - 1 - i) * canvas.width + column) * 4);
@@ -116,17 +116,17 @@
         const framestd = tf.tensor(tf.norm(zeromean).dataSync()/Math.sqrt(1024));
         const normalized = tf.div(zeromean, framestd);
         const input = normalized.reshape([1, 1024]);
-        const salience = model.predict([input]).reshape([360]);
+        const activation = model.predict([input]).reshape([360]);
 
         // the confidence of voicing activity and the argmax bin
-        const confidence = salience.max().dataSync()[0];
-        const center = salience.argMax().dataSync()[0];
+        const confidence = activation.max().dataSync()[0];
+        const center = activation.argMax().dataSync()[0];
         document.getElementById('voicing-confidence').innerHTML = confidence.toFixed(3);
 
         // slice the local neighborhood around the argmax bin
         const start = Math.max(0, center - 4);
         const end = Math.min(360, center + 5);
-        const weights = salience.slice([start], [end - start]);
+        const weights = activation.slice([start], [end - start]);
         const cents = cent_mapping.slice([start], [end - start]);
 
         // take the local weighted average to get the predicted pitch
@@ -136,12 +136,12 @@
         const predicted_cent = productSum / weightSum;
         const predicted_hz = 10 * Math.pow(2, predicted_cent / 1200.0);
 
-        // update the UI and the salience plot
+        // update the UI and the activation plot
         var result = (confidence > 0.5) ? predicted_hz.toFixed(3) + ' Hz' : '&nbsp;no voice&nbsp&nbsp;';
         var strlen = result.length;
         for (var i = 0; i < 11 - strlen; i++) result = "&nbsp;" + result;
         document.getElementById('estimated-pitch').innerHTML = result;
-        updateSalience(salience.dataSync());
+        updateActivation(activation.dataSync());
       });
     });
   }
@@ -178,7 +178,12 @@
         scriptNode.connect(gain);
         gain.connect(audioContext.destination);
 
-        status('Running ...');
+        if (audioContext.state === 'running') {
+          status('Running ...');
+        } else {
+          // user gesture (like click) is required to start AudioContext, in some cases
+          status('<a href="javascript:crepe.resume();" style="color:red;">*** Click here to start AudioContext ***</a>')
+        }
       }, function(message) {
         error('Could not access microphone - ' + message);
       });
@@ -197,4 +202,12 @@
   }
 
   initTF();
-}();
+
+  return {
+    'audioContext': audioContext,
+    'resume': function() {
+      audioContext.resume();
+      status('Running ...');
+    }
+  }
+})();
