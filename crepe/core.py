@@ -3,9 +3,8 @@ from __future__ import print_function
 import os
 import re
 import sys
-import wave
 
-import pysndfile
+from scipy.io import wavfile
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
@@ -241,7 +240,7 @@ def process_file(file, output=None, viterbi=False,
     build_and_load_model()
 
     try:
-        audio, sr, _ = pysndfile.sndio.read(file)
+        sr, audio = wavfile.read(file)
     except ValueError:
         print("CREPE: Could not read %s" % file, file=sys.stderr)
         raise
