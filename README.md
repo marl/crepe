@@ -16,16 +16,22 @@ We kindly request that academic publications making use of CREPE cite the aforem
 
 ## Using CREPE
 
-CREPE requires a few Python dependencies as specified in [`requirements.txt`](requirements.txt). To install them, run the following command in your Python environment:
+CREPE is hosted on PyPI. To install, run the following command in your Python environment:
 
 ```bash
-$ pip install -r requirements.txt
+$ pip install crepe
 ```
 
-This repository includes a pre-trained version of the CREPE model for easy use. To estimate the pitch of `audio_file.wav`, run:
+This package includes a command line utility `crepe` and a pre-trained version of the CREPE model for easy use. To estimate the pitch of `audio_file.wav`, run:
 
 ```bash
-$ python crepe.py audio_file.wav
+$ crepe audio_file.wav
+```
+
+or
+
+```bash
+$ python -m crepe audio_file.wav
 ```
 
 The resulting `audio_file.f0.csv` contains 3 columns: the first with timestamps (a 10 ms hop size is used), the second contains the predicted fundamental frequency in Hz, and the third contains the voicing confidence, i.e. the confidence in the presence of a pitch:
