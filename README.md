@@ -49,7 +49,7 @@ The resulting `audio_file.f0.csv` contains 3 columns: the first with timestamps 
     0.08,199.678,0.775208
     ...
 
-The script can also optionally save the output activation matrix of the model to an npy file (`--save-activation`), where the matrix dimensions are (n_frames, 360) using a hop size of 10 ms (there are 360 pitch bins covering 20 cents each).The script can also output a plot of the activation matrix (`--save-plot`), saved to `audio_file.activation.png` including an optional visual representation of the model's voicing detection (`--plot-voicing`). Here's an example plot of the activation matrix (without the voicing overlay) for an excerpt of male singing voice:
+The script can also optionally save the output activation matrix of the model to an npy file (`--save-activation`), where the matrix dimensions are (n_frames, 360) using a hop size of 10 ms (there are 360 pitch bins covering 20 cents each). The script can also output a plot of the activation matrix (`--save-plot`), saved to `audio_file.activation.png` including an optional visual representation of the model's voicing detection (`--plot-voicing`). Here's an example plot of the activation matrix (without the voicing overlay) for an excerpt of male singing voice:
 
 ![salience](https://user-images.githubusercontent.com/266841/38465913-6fa085b0-3aef-11e8-9633-bdd59618ea23.png)
 
@@ -65,6 +65,11 @@ For more information on the usage, please refer to the help message:
 $ python crepe.py --help
 ```
 
+## Argmax-local Weighted Averaging
+
+This release of CREPE uses the following weighted averaging formula, which is slightly different from the paper. This only focuses on the neighborhood around the maximum activation, which is shown to further improve the pitch accuracy:
+
+<p align="center"><img src="https://user-images.githubusercontent.com/266841/38990411-68408544-4397-11e8-9e87-ca5a86c5508b.png" width="400"></p>
 
 ## Please Note
 
