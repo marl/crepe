@@ -19,6 +19,7 @@ We kindly request that academic publications making use of CREPE cite the aforem
 CREPE is hosted on PyPI. To install, run the following command in your Python environment:
 
 ```bash
+$ pip install --upgrade tensorflow  # if you don't already have tensorflow >= 1.6.0
 $ pip install crepe
 ```
 
@@ -68,8 +69,8 @@ $ python crepe.py --help
 ## Please Note
 
 - The current version only supports WAV files as input.
-- The model is trained on 16 kHz audio, and if the input audio has a different sample rate, it will be first resampled to 16 kHz using [resampy](https://github.com/bmcfee/resampy).
-- While in principle the code should run with any Keras backend, it has only been tested with the TensorFlow backend. The model was trained using Keras 2.1.5 and TensorFlow 1.6.0.
+- The model is trained on 16 kHz audio, so if the input audio has a different sample rate, it will be first resampled to 16 kHz using [resampy](https://github.com/bmcfee/resampy).
+- Due to the subtle numerical differences between frameworks, Keras should be configured to use the TensorFlow backend for the best performance. The model was trained using Keras 2.1.5 and TensorFlow 1.6.0, and the newer versions of TensorFlow seems to work as well.
 - Prediction is significantly faster if Keras (and the corresponding backend) is configured to run on GPU.
 - The provided model is trained using the following datasets, composed of vocal and instrumental audio, and is therefore expected to work best on this type of audio signals.
   - MIR-1K [1]
