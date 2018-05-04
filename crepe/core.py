@@ -141,6 +141,10 @@ def get_activation(audio, sr):
     activation : np.ndarray [shape=(T, 360)]
         The raw activation matrix
     """
+    global model
+    if model is None:
+        build_and_load_model()
+
     if len(audio.shape) == 2:
         audio = audio.mean(1)  # make mono
     audio = audio.astype(np.float32)

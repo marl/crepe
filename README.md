@@ -14,7 +14,7 @@ Further details are provided in the following paper:
 We kindly request that academic publications making use of CREPE cite the aforementioned paper.
 
 
-## Using CREPE
+## Installing CREPE
 
 CREPE is hosted on PyPI. To install, run the following command in your Python environment:
 
@@ -22,6 +22,15 @@ CREPE is hosted on PyPI. To install, run the following command in your Python en
 $ pip install --upgrade tensorflow  # if you don't already have tensorflow >= 1.6.0
 $ pip install crepe
 ```
+
+To install the latest version from source clone the repository and from the top-level `crepe` folder call:
+
+```bash
+$ python setup.py install
+```
+
+## Using CREPE
+### Using CREPE from the command line
 
 This package includes a command line utility `crepe` and a pre-trained version of the CREPE model for easy use. To estimate the pitch of `audio_file.wav`, run:
 
@@ -63,6 +72,16 @@ For more information on the usage, please refer to the help message:
 
 ```bash
 $ python crepe.py --help
+```
+
+### Using CREPE inside Python
+CREPE can be imported as module to be used directly in Python. Here's a minimal example:
+```python
+import crepe
+from scipy.io import wavfile
+
+sr, audio = wavfile.read('/path/to/audiofile.wav')
+time, frequency, confidence, activation = crepe.predict(audio, sr, viterbi=True)
 ```
 
 ## Argmax-local Weighted Averaging
