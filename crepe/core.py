@@ -125,7 +125,7 @@ def to_viterbi_cents(salience):
                      range(len(observations))])
 
 
-def get_activation(audio, sr):
+def get_activation(audio, sr, center=True):
     """
     
     Parameters
@@ -135,6 +135,10 @@ def get_activation(audio, sr):
     sr : int
         Sample rate of the audio samples. The audio will be resampled if
         the sample rate is not 16 kHz, which is expected by the model.
+    center : boolean
+        - If `True` (default), the signal `audio` is padded so that frame
+          `D[:, t]` is centered at `audio[t * hop_length]`.
+        - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
 
     Returns
     -------
@@ -153,6 +157,11 @@ def get_activation(audio, sr):
         from resampy import resample
         audio = resample(audio, sr, model_srate)
 
+    # pad so that frames are centered around their timestamps (i.e. first frame
+    # is zero centered).
+    if center:
+        audio = np.pad(audio, 512, mode='constant', constant_values=0)
+
     # make 1024-sample frames of the audio with hop length of 10 milliseconds
     hop_length = int(model_srate / 100)
     n_frames = 1 + int((len(audio) - 1024) / hop_length)
@@ -168,7 +177,7 @@ def get_activation(audio, sr):
     return model.predict(frames, verbose=1)
 
 
-def predict(audio, sr, viterbi=False):
+def predict(audio, sr, viterbi=False, center=True):
     """
     Perform pitch estimation on given audio
     
@@ -180,7 +189,11 @@ def predict(audio, sr, viterbi=False):
         Sample rate of the audio samples. The audio will be resampled if
         the sample rate is not 16 kHz, which is expected by the model.
     viterbi : bool
-        Apply viterbi smoothing to the estimated pitch curve. False by default. 
+        Apply viterbi smoothing to the estimated pitch curve. False by default.
+    center : boolean
+        - If `True` (default), the signal `audio` is padded so that frame
+          `D[:, t]` is centered at `audio[t * hop_length]`.
+        - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
 
     Returns
     -------
@@ -195,7 +208,7 @@ def predict(audio, sr, viterbi=False):
         activation: np.ndarray [shape=(T, 360)]
             The raw activation matrix
     """
-    activation = get_activation(audio, sr)
+    activation = get_activation(audio, sr, center=center)
     confidence = activation.max(axis=1)
 
     if viterbi:
@@ -212,7 +225,7 @@ def predict(audio, sr, viterbi=False):
     return time, frequency, confidence, activation
 
 
-def process_file(file, output=None, viterbi=False,
+def process_file(file, output=None, viterbi=False, center=True,
                  save_activation=False, save_plot=False, plot_voicing=False):
     """
     Use the input model to perform pitch estimation on the input file.
@@ -226,6 +239,10 @@ def process_file(file, output=None, viterbi=False,
         be saved to the directory containing the input file.
     viterbi : bool
         Apply viterbi smoothing to the estimated pitch curve. False by default.
+    center : boolean
+        - If `True` (default), the signal `audio` is padded so that frame
+          `D[:, t]` is centered at `audio[t * hop_length]`.
+        - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
     save_activation : bool
         Save the output activation matrix to an .npy file. False by default.
     save_plot : bool
@@ -249,7 +266,8 @@ def process_file(file, output=None, viterbi=False,
         print("CREPE: Could not read %s" % file, file=sys.stderr)
         raise
 
-    time, frequency, confidence, activation = predict(audio, sr, viterbi)
+    time, frequency, confidence, activation = predict(audio, sr, viterbi,
+                                                      center=center)
 
     # write prediction as TSV
     f0_file = output_path(file, ".f0.csv", output)
