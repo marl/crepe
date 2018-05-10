@@ -8,7 +8,7 @@ from .core import process_file
 
 
 def run(filename, output=None, viterbi=False, save_activation=False,
-        save_plot=False, plot_voicing=False):
+        save_plot=False, plot_voicing=False, no_centering=False):
     """
     Collect the WAV files to process and run the model
 
@@ -31,6 +31,12 @@ def run(filename, output=None, viterbi=False, save_activation=False,
         Include a visual representation of the voicing activity detection in
         the plot of the output activation matrix. False by default, only
         relevant if save_plot is True.
+    no_centering : bool
+        Don't pad the signal, meaning frames will begin at their timestamp
+        instead of being centered around their timestamp (which is the
+        default). CAUTION: setting this option can result in CREPE's output
+        being misaligned with respect to the output of other audio processing
+        tools and is generally not recommended.
 
     """
 
@@ -59,8 +65,12 @@ def run(filename, output=None, viterbi=False, save_activation=False,
     for i, file in enumerate(files):
         print('CREPE: Processing {} ... ({}/{})'.format(file, i+1, len(files)),
               file=sys.stderr)
-        process_file(file, output, viterbi,
-                     save_activation, save_plot, plot_voicing)
+        process_file(file, output=output,
+                     viterbi=viterbi,
+                     center=(not no_centering),
+                     save_activation=save_activation,
+                     save_plot=save_plot,
+                     plot_voicing=plot_voicing)
 
 
 def main():
@@ -108,8 +118,21 @@ def main():
     parser.add_argument('--plot-voicing', '-v', action='store_true',
                         help='Plot the voicing prediction on top of the '
                              'output activation matrix plot')
+    parser.add_argument('--no-centering', 'n', action='store_true',
+                        help="Don't pad the signal, meaning frames will begin "
+                             "at their timestamp instead of being centered "
+                             "around their timestamp (which is the default). "
+                             "CAUTION: setting this option can result in "
+                             "CREPE's output being misaligned with respect to "
+                             "the output of other audio processing tools and "
+                             "is generally not recommended.")
 
     args = parser.parse_args()
 
-    run(args.filename, args.output, args.viterbi,
-        args.save_activation, args.save_plot, args.plot_voicing)
+    run(args.filename,
+        output=args.output,
+        viterbi=args.viterbi,
+        save_activation=args.save_activation,
+        save_plot=args.save_plot,
+        plot_voicing=args.plot_voicing,
+        no_centering=args.no_centering)
