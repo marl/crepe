@@ -98,7 +98,7 @@ $ python crepe.py audio_folder
 ```
 The script will process all WAV files found inside the folder. 
 
-### Additional usage information
+#### Additional usage information
 For more information on the usage, please refer to the help message:
 
 ```bash
