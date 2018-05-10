@@ -266,7 +266,8 @@ def process_file(file, output=None, viterbi=False, center=True,
         print("CREPE: Could not read %s" % file, file=sys.stderr)
         raise
 
-    time, frequency, confidence, activation = predict(audio, sr, viterbi,
+    time, frequency, confidence, activation = predict(audio, sr,
+                                                      viterbi=viterbi,
                                                       center=center)
 
     # write prediction as TSV
@@ -281,7 +282,8 @@ def process_file(file, output=None, viterbi=False, center=True,
     if save_activation:
         activation_path = output_path(file, ".activation.npy", output)
         np.save(activation_path, activation)
-        print("CREPE: Saved the activation matrix at {}".format(activation_path))
+        print("CREPE: Saved the activation matrix at {}".format(
+            activation_path))
 
     # save the salience visualization in a PNG file
     if save_plot:
