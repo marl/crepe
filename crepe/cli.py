@@ -118,7 +118,7 @@ def main():
     parser.add_argument('--plot-voicing', '-v', action='store_true',
                         help='Plot the voicing prediction on top of the '
                              'output activation matrix plot')
-    parser.add_argument('--no-centering', 'n', action='store_true',
+    parser.add_argument('--no-centering', '-n', action='store_true',
                         help="Don't pad the signal, meaning frames will begin "
                              "at their timestamp instead of being centered "
                              "around their timestamp (which is the default). "
