@@ -20,10 +20,15 @@ else:
 
 version = imp.load_source('crepe.version', os.path.join('crepe', 'version.py'))
 
+with open('README.md') as file:
+    long_description = file.read()
+
 setup(
     name='crepe',
     version=version.version,
     description='CREPE pitch tracker',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://github.com/marl/crepe',
     author='Jong Wook Kim',
     author_email='jongwook@nyu.edu',
