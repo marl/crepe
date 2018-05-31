@@ -8,8 +8,9 @@ from argparse import ArgumentTypeError
 from .core import process_file
 
 
-def run(filename, output=None, viterbi=False, save_activation=False,
-        save_plot=False, plot_voicing=False, no_centering=False, step_size=10):
+def run(filename, output=None, model_capacity='full', viterbi=False,
+        save_activation=False, save_plot=False, plot_voicing=False,
+        no_centering=False, step_size=10):
     """
     Collect the WAV files to process and run the model
 
@@ -21,6 +22,9 @@ def run(filename, output=None, viterbi=False, save_activation=False,
     output : str or None
         Path to directory for saving output files. If None, output files will
         be saved to the directory containing the input file.
+    model_capacity : 'tiny', 'small', 'medium', 'large', or 'full'
+        String specifying the model capacity; see the docstring of
+        :func:`~crepe.core.build_and_load_model`
     viterbi : bool
         Apply viterbi smoothing to the estimated pitch curve. False by default.
     save_activation : bool
@@ -68,6 +72,7 @@ def run(filename, output=None, viterbi=False, save_activation=False,
         print('CREPE: Processing {} ... ({}/{})'.format(file, i+1, len(files)),
               file=sys.stderr)
         process_file(file, output=output,
+                     model_capacity=model_capacity,
                      viterbi=viterbi,
                      center=(not no_centering),
                      save_activation=save_activation,
@@ -117,6 +122,11 @@ def main():
                              'already exist; if not given, the output will be '
                              'saved to the same directory as the input WAV '
                              'file(s)')
+    parser.add_argument('--model-capacity', '-c', default='full',
+                        choices=['tiny', 'small', 'medium', 'large', 'full'],
+                        help='String specifying the model capacity; smaller '
+                             'models are faster to compute, but may yield '
+                             'less accurate pitch estimation')
     parser.add_argument('--viterbi', '-V', action='store_true',
                         help='perform Viterbi decoding to smooth the pitch '
                              'curve')
@@ -145,6 +155,7 @@ def main():
 
     run(args.filename,
         output=args.output,
+        model_capacity=args.model_capacity,
         viterbi=args.viterbi,
         save_activation=args.save_activation,
         save_plot=args.save_plot,

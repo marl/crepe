@@ -4,19 +4,33 @@ import bz2
 import imp
 from setuptools import setup, find_packages
 
-weight_file = 'model.h5'
+try:
+    from urllib.request import urlretrieve
+except ImportError:
+    from urllib import urlretrieve
+
+model_capacities = ['tiny', 'small', 'medium', 'large', 'full']
+weight_files = ['model-{}.h5'.format(cap) for cap in model_capacities]
+base_url = 'https://github.com/marl/crepe/raw/models/'
 
 if len(sys.argv) > 1 and sys.argv[1] == 'sdist':
-    # include the compressed weights file in sdist
-    weight_file = 'model.h5.bz2'
+    # exclude the weight files in sdist
+    weight_files = []
 else:
     # in all other cases, decompress the weights file if necessary
-    if not os.path.isfile(os.path.join('crepe', 'model.h5')):
-        print('Decompressing the model weights ...')
-        with bz2.BZ2File(os.path.join('crepe', 'model.h5.bz2'), 'rb') as source:
-            with open(os.path.join('crepe', 'model.h5'), 'wb') as target:
-                target.write(source.read())
-        print('Decompression complete')
+    for weight_file in weight_files:
+        weight_path = os.path.join('crepe', weight_file)
+        if not os.path.isfile(weight_path):
+            compressed_file = weight_file + '.bz2'
+            compressed_path = os.path.join('crepe', compressed_file)
+            if not os.path.isfile(compressed_file):
+                print('Downloading weight file {} ...'.format(compressed_file))
+                urlretrieve(base_url + compressed_file, compressed_path)
+            print('Decompressing ...')
+            with bz2.BZ2File(compressed_path, 'rb') as source:
+                with open(weight_path, 'wb') as target:
+                    target.write(source.read())
+            print('Decompression complete')
 
 version = imp.load_source('crepe.version', os.path.join('crepe', 'version.py'))
 
@@ -64,6 +78,6 @@ setup(
         'scikit-learn>=0.16'
     ],
     package_data={
-        'crepe': [weight_file]
+        'crepe': weight_files
     },
 )
