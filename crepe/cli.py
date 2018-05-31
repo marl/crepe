@@ -3,12 +3,13 @@ from __future__ import print_function
 import os
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from argparse import ArgumentTypeError
 
 from .core import process_file
 
 
 def run(filename, output=None, viterbi=False, save_activation=False,
-        save_plot=False, plot_voicing=False, no_centering=False):
+        save_plot=False, plot_voicing=False, no_centering=False, step_size=10):
     """
     Collect the WAV files to process and run the model
 
@@ -37,7 +38,8 @@ def run(filename, output=None, viterbi=False, save_activation=False,
         default). CAUTION: setting this option can result in CREPE's output
         being misaligned with respect to the output of other audio processing
         tools and is generally not recommended.
-
+    step_size : int
+        The step size in milliseconds for running pitch estimation.
     """
 
     files = []
@@ -70,11 +72,20 @@ def run(filename, output=None, viterbi=False, save_activation=False,
                      center=(not no_centering),
                      save_activation=save_activation,
                      save_plot=save_plot,
-                     plot_voicing=plot_voicing)
+                     plot_voicing=plot_voicing,
+                     step_size=step_size)
+
+
+def positive_int(value):
+    """An argparse type method for accepting only positive integers"""
+    ivalue = int(value)
+    if ivalue <= 0:
+        raise ArgumentTypeError('expected a positive integer')
+    return ivalue
 
 
 def main():
-    description = """
+    """
     This is a script for running the pre-trained pitch estimation model, CREPE,
     by taking WAV files(s) as input. For each input WAV, a CSV file containing:
 
@@ -95,7 +106,7 @@ def main():
     optional visual representation of the model's voicing detection.
     """
 
-    parser = ArgumentParser(sys.argv[0], description=description,
+    parser = ArgumentParser(sys.argv[0], description=main.__doc__,
                             formatter_class=RawDescriptionHelpFormatter)
 
     parser.add_argument('filename', nargs='+',
@@ -126,6 +137,9 @@ def main():
                              "CREPE's output being misaligned with respect to "
                              "the output of other audio processing tools and "
                              "is generally not recommended.")
+    parser.add_argument('--step-size', '-s', default=10, type=positive_int,
+                        help='The step size in milliseconds for running '
+                             'pitch estimation. The default is 10 ms.')
 
     args = parser.parse_args()
 
@@ -135,4 +149,5 @@ def main():
         save_activation=args.save_activation,
         save_plot=args.save_plot,
         plot_voicing=args.plot_voicing,
-        no_centering=args.no_centering)
+        no_centering=args.no_centering,
+        step_size=args.step_size)
