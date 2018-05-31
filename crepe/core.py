@@ -125,7 +125,7 @@ def to_viterbi_cents(salience):
                      range(len(observations))])
 
 
-def get_activation(audio, sr, center=True):
+def get_activation(audio, sr, center=True, step_size=10):
     """
     
     Parameters
@@ -139,6 +139,8 @@ def get_activation(audio, sr, center=True):
         - If `True` (default), the signal `audio` is padded so that frame
           `D[:, t]` is centered at `audio[t * hop_length]`.
         - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
+    step_size : int
+        The step size in milliseconds for running pitch estimation.
 
     Returns
     -------
@@ -163,7 +165,7 @@ def get_activation(audio, sr, center=True):
         audio = np.pad(audio, 512, mode='constant', constant_values=0)
 
     # make 1024-sample frames of the audio with hop length of 10 milliseconds
-    hop_length = int(model_srate / 100)
+    hop_length = int(model_srate * step_size / 1000)
     n_frames = 1 + int((len(audio) - 1024) / hop_length)
     frames = as_strided(audio, shape=(1024, n_frames),
                         strides=(audio.itemsize, hop_length * audio.itemsize))
@@ -177,7 +179,7 @@ def get_activation(audio, sr, center=True):
     return model.predict(frames, verbose=1)
 
 
-def predict(audio, sr, viterbi=False, center=True):
+def predict(audio, sr, viterbi=False, center=True, step_size=10):
     """
     Perform pitch estimation on given audio
     
@@ -194,6 +196,8 @@ def predict(audio, sr, viterbi=False, center=True):
         - If `True` (default), the signal `audio` is padded so that frame
           `D[:, t]` is centered at `audio[t * hop_length]`.
         - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
+    step_size : int
+        The step size in milliseconds for running pitch estimation.
 
     Returns
     -------
@@ -208,7 +212,7 @@ def predict(audio, sr, viterbi=False, center=True):
         activation: np.ndarray [shape=(T, 360)]
             The raw activation matrix
     """
-    activation = get_activation(audio, sr, center=center)
+    activation = get_activation(audio, sr, center=center, step_size=step_size)
     confidence = activation.max(axis=1)
 
     if viterbi:
@@ -219,14 +223,14 @@ def predict(audio, sr, viterbi=False, center=True):
     frequency = 10 * 2 ** (cents / 1200)
     frequency[np.isnan(frequency)] = 0
 
-    # we only support 0.01 ms steps at the moment
-    time = np.arange(confidence.shape[0]) * 0.01
+    time = np.arange(confidence.shape[0]) * step_size / 1000.0
 
     return time, frequency, confidence, activation
 
 
 def process_file(file, output=None, viterbi=False, center=True,
-                 save_activation=False, save_plot=False, plot_voicing=False):
+                 save_activation=False, save_plot=False, plot_voicing=False,
+                 step_size=10):
     """
     Use the input model to perform pitch estimation on the input file.
 
@@ -252,6 +256,8 @@ def process_file(file, output=None, viterbi=False, center=True,
         Include a visual representation of the voicing activity detection in
         the plot of the output activation matrix. False by default, only
         relevant if save_plot is True.
+    step_size : int
+        The step size in milliseconds for running pitch estimation.
 
     Returns
     -------
@@ -268,12 +274,13 @@ def process_file(file, output=None, viterbi=False, center=True,
 
     time, frequency, confidence, activation = predict(audio, sr,
                                                       viterbi=viterbi,
-                                                      center=center)
+                                                      center=center,
+                                                      step_size=step_size)
 
     # write prediction as TSV
     f0_file = output_path(file, ".f0.csv", output)
     f0_data = np.vstack([time, frequency, confidence]).transpose()
-    np.savetxt(f0_file, f0_data, fmt=['%.2f', '%.3f', '%.6f'], delimiter=',',
+    np.savetxt(f0_file, f0_data, fmt=['%.3f', '%.3f', '%.6f'], delimiter=',',
                header='time,frequency,confidence', comments='')
     print("CREPE: Saved the estimated frequencies and confidence values at "
           "{}".format(f0_file))
