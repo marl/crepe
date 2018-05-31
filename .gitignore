@@ -5,6 +5,7 @@
 *.pyo
 __pycache__
 
+.cache
 .ipynb_checkpoints
 .pytest_cache
 
@@ -15,8 +16,9 @@ dist
 build
 *.egg-info
 
-*.salience.png
-*.salience.npy
+*.activation.png
+*.activation.npy
 *.f0.csv
 
-crepe/model.h5
+crepe/model-*.h5
+crepe/model-*.h5.bz2
