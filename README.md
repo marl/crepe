@@ -44,7 +44,7 @@ or
 $ python -m crepe audio_file.wav
 ```
 
-The resulting `audio_file.f0.csv` contains 3 columns: the first with timestamps (a 10 ms hop size is used), the second contains the predicted fundamental frequency in Hz, and the third contains the voicing confidence, i.e. the confidence in the presence of a pitch:
+The resulting `audio_file.f0.csv` contains 3 columns: the first with timestamps (a 10 ms hop size is used by default), the second contains the predicted fundamental frequency in Hz, and the third contains the voicing confidence, i.e. the confidence in the presence of a pitch:
 
     time,frequency,confidence
     0.00,185.616,0.907112
@@ -59,6 +59,11 @@ The resulting `audio_file.f0.csv` contains 3 columns: the first with timestamps 
     ...
 
 #### Timestamps
+
+CREPE uses 10-millisecond time steps by default, which can be adjusted using 
+the `--step-size` option, which takes the size of the time step in millisecond.
+For example, `--step-size 50` will calculate pitch for every 50 milliseconds.
+
 Following the convention adopted by popular audio processing libraries such as 
 [Essentia](http://essentia.upf.edu/) and [Librosa](https://librosa.github.io/librosa/), 
 from v0.0.5 onwards CREPE will pad the input signal such that the first frame 
@@ -70,7 +75,13 @@ will *start* at time zero and generally frame `D[:, t]` will *begin* at
 `audio[t * hop_length]`. Sticking to the default behavior (centered frames) is 
 strongly recommended to avoid misalignment with features and annotations produced 
 by other common audio processing tools. 
-  
+
+#### Model Capacity
+
+CREPE uses the model size that was reported in the paper by default, but can optionally
+use a smaller model for computation speed, at the cost of slightly lower accuracy.
+You can specify `--model-capacity {tiny|small|medium|large|full}` as the command
+line option to select a model with desired capacity.
   
 #### Temporal smoothing
 By default CREPE does not apply temporal smoothing to the pitch curve, but 
