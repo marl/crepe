@@ -44,7 +44,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/marl/crepe',
-    author='Jong Wook Kim',
+    author='Jong Wook Kim and Justin Salamon',
     author_email='jongwook@nyu.edu',
     packages=find_packages(),
     entry_points = {
