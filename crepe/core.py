@@ -37,7 +37,8 @@ def build_and_load_model(model_capacity):
 
     Returns
     -------
-    The keras model loaded in memory
+    model : keras.models.Model
+        The pre-trained keras model loaded in memory
     """
     from keras.layers import Input, Reshape, Conv2D, BatchNormalization
     from keras.layers import MaxPool2D, Dropout, Permute, Flatten, Dense
@@ -151,7 +152,8 @@ def to_viterbi_cents(salience):
                      range(len(observations))])
 
 
-def get_activation(audio, sr, model_capacity='full', center=True, step_size=10, verbose=1):
+def get_activation(audio, sr, model_capacity='full', center=True, step_size=10,
+                   verbose=1):
     """
     
     Parameters
@@ -170,6 +172,9 @@ def get_activation(audio, sr, model_capacity='full', center=True, step_size=10, 
         - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
     step_size : int
         The step size in milliseconds for running pitch estimation.
+    verbose : int
+        Set the keras verbosity mode: 1 (default) will print out a progress bar
+        during prediction, 0 will suppress all non-error printouts.
 
     Returns
     -------
@@ -229,6 +234,9 @@ def predict(audio, sr, model_capacity='full',
         - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
     step_size : int
         The step size in milliseconds for running pitch estimation.
+    verbose : int
+        Set the keras verbosity mode: 1 (default) will print out a progress bar
+        during prediction, 0 will suppress all non-error printouts.
 
     Returns
     -------
@@ -244,7 +252,8 @@ def predict(audio, sr, model_capacity='full',
             The raw activation matrix
     """
     activation = get_activation(audio, sr, model_capacity=model_capacity,
-                                center=center, step_size=step_size, verbose=verbose)
+                                center=center, step_size=step_size,
+                                verbose=verbose)
     confidence = activation.max(axis=1)
 
     if viterbi:
@@ -262,7 +271,7 @@ def predict(audio, sr, model_capacity='full',
 
 def process_file(file, output=None, model_capacity='full', viterbi=False,
                  center=True, save_activation=False, save_plot=False,
-                 plot_voicing=False, step_size=10):
+                 plot_voicing=False, step_size=10, verbose=True):
     """
     Use the input model to perform pitch estimation on the input file.
 
@@ -293,6 +302,8 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
         relevant if save_plot is True.
     step_size : int
         The step size in milliseconds for running pitch estimation.
+    verbose : bool
+        Print status messages and keras progress (default=True).
 
     Returns
     -------
@@ -304,26 +315,30 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
         print("CREPE: Could not read %s" % file, file=sys.stderr)
         raise
 
-    time, frequency, confidence, activation = predict(audio, sr,
-                                                      model_capacity=model_capacity,
-                                                      viterbi=viterbi,
-                                                      center=center,
-                                                      step_size=step_size)
+    time, frequency, confidence, activation = predict(
+        audio, sr,
+        model_capacity=model_capacity,
+        viterbi=viterbi,
+        center=center,
+        step_size=step_size,
+        verbose=1 * verbose)
 
     # write prediction as TSV
     f0_file = output_path(file, ".f0.csv", output)
     f0_data = np.vstack([time, frequency, confidence]).transpose()
     np.savetxt(f0_file, f0_data, fmt=['%.3f', '%.3f', '%.6f'], delimiter=',',
                header='time,frequency,confidence', comments='')
-    print("CREPE: Saved the estimated frequencies and confidence values at "
-          "{}".format(f0_file))
+    if verbose:
+        print("CREPE: Saved the estimated frequencies and confidence values "
+              "at {}".format(f0_file))
 
     # save the salience file to a .npy file
     if save_activation:
         activation_path = output_path(file, ".activation.npy", output)
         np.save(activation_path, activation)
-        print("CREPE: Saved the activation matrix at {}".format(
-            activation_path))
+        if verbose:
+            print("CREPE: Saved the activation matrix at {}".format(
+                activation_path))
 
     # save the salience visualization in a PNG file
     if save_plot:
@@ -345,5 +360,6 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
                 inferno((confidence > 0.5).astype(np.float))[np.newaxis, :, :])
 
         imwrite(plot_file, (255 * image).astype(np.uint8))
-        print("CREPE: Saved the salience plot at {}".format(plot_file))
+        if verbose:
+            print("CREPE: Saved the salience plot at {}".format(plot_file))
 

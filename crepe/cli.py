@@ -10,7 +10,7 @@ from .core import process_file
 
 def run(filename, output=None, model_capacity='full', viterbi=False,
         save_activation=False, save_plot=False, plot_voicing=False,
-        no_centering=False, step_size=10):
+        no_centering=False, step_size=10, verbose=True):
     """
     Collect the WAV files to process and run the model
 
@@ -44,6 +44,8 @@ def run(filename, output=None, model_capacity='full', viterbi=False,
         tools and is generally not recommended.
     step_size : int
         The step size in milliseconds for running pitch estimation.
+    verbose : bool
+        Print status messages and keras progress (default=True).
     """
 
     files = []
@@ -69,8 +71,9 @@ def run(filename, output=None, model_capacity='full', viterbi=False,
         sys.exit(-1)
 
     for i, file in enumerate(files):
-        print('CREPE: Processing {} ... ({}/{})'.format(file, i+1, len(files)),
-              file=sys.stderr)
+        if verbose:
+            print('CREPE: Processing {} ... ({}/{})'.format(
+                file, i+1, len(files)), file=sys.stderr)
         process_file(file, output=output,
                      model_capacity=model_capacity,
                      viterbi=viterbi,
@@ -78,7 +81,8 @@ def run(filename, output=None, model_capacity='full', viterbi=False,
                      save_activation=save_activation,
                      save_plot=save_plot,
                      plot_voicing=plot_voicing,
-                     step_size=step_size)
+                     step_size=step_size,
+                     verbose=verbose)
 
 
 def positive_int(value):
@@ -150,6 +154,10 @@ def main():
     parser.add_argument('--step-size', '-s', default=10, type=positive_int,
                         help='The step size in milliseconds for running '
                              'pitch estimation. The default is 10 ms.')
+    parser.add_argument('--quiet', '-q', default=False,
+                        action='store_true',
+                        help='Suppress all non-error printouts (e.g. progress '
+                             'bar).')
 
     args = parser.parse_args()
 
@@ -161,4 +169,5 @@ def main():
         save_plot=args.save_plot,
         plot_voicing=args.plot_voicing,
         no_centering=args.no_centering,
-        step_size=args.step_size)
+        step_size=args.step_size,
+        verbose=not args.quiet)
