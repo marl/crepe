@@ -151,7 +151,7 @@ def to_viterbi_cents(salience):
                      range(len(observations))])
 
 
-def get_activation(audio, sr, model_capacity='full', center=True, step_size=10):
+def get_activation(audio, sr, model_capacity='full', center=True, step_size=10, verbose=1):
     """
     
     Parameters
@@ -203,11 +203,11 @@ def get_activation(audio, sr, model_capacity='full', center=True, step_size=10):
     frames /= np.std(frames, axis=1)[:, np.newaxis]
 
     # run prediction and convert the frequency bin weights to Hz
-    return model.predict(frames, verbose=1)
+    return model.predict(frames, verbose=verbose)
 
 
 def predict(audio, sr, model_capacity='full',
-            viterbi=False, center=True, step_size=10):
+            viterbi=False, center=True, step_size=10, verbose=1):
     """
     Perform pitch estimation on given audio
     
@@ -244,7 +244,7 @@ def predict(audio, sr, model_capacity='full',
             The raw activation matrix
     """
     activation = get_activation(audio, sr, model_capacity=model_capacity,
-                                center=center, step_size=step_size)
+                                center=center, step_size=step_size, verbose=verbose)
     confidence = activation.max(axis=1)
 
     if viterbi:
