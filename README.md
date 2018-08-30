@@ -125,6 +125,11 @@ from scipy.io import wavfile
 sr, audio = wavfile.read('/path/to/audiofile.wav')
 time, frequency, confidence, activation = crepe.predict(audio, sr, viterbi=True)
 ```
+The Viterbi algorithm can also be used to predict which frames are unvoiced. The following commands will set the frequency of such frames to zero:
+```python
+is_voiced = crepe.predict_voicing(confidence)
+frequency *= is_voiced
+```
 
 ## Argmax-local Weighted Averaging
 
