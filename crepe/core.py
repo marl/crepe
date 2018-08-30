@@ -178,12 +178,12 @@ def predict_voicing(confidence):
 
     # mean and variance for unvoiced and voiced states
     means = np.array([[0.0], [1.0]])
-    vars = np.array([[0.25], [0.25]])
+    variances = np.array([[0.25], [0.25]])
 
     # fix the model parameters because we are not optimizing the model
     model = hmm.GaussianHMM(n_components=2)
     model.startprob_, model.covars_, model.transmat_, model.means_, model.n_features = \
-        starting, vars, transition, means, 1
+        starting, variances, transition, means, 1
 
     # find the Viterbi path
     voicing_states = model.predict(confidence.reshape(-1, 1), [len(confidence)])
