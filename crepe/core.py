@@ -152,6 +152,45 @@ def to_viterbi_cents(salience):
                      range(len(observations))])
 
 
+def predict_voicing(confidence):
+    """
+    Find the Viterbi path for voiced versus unvoiced frames.
+
+    Parameters
+    ----------
+    confidence : np.ndarray [shape=(N,)]
+        voicing confidence array, i.e. the confidence in the presence of
+        a pitch
+
+    Returns
+    -------
+    voicing_states : np.ndarray [shape=(N,)]
+        HMM predictions for each frames state, 0 if unvoiced, 1 if
+        voiced
+    """
+    from hmmlearn import hmm
+
+    # uniform prior on the voicing confidence
+    starting = np.array([0.5, 0.5])
+
+    # transition probabilities inducing continuous voicing state
+    transition = np.array([[0.99, 0.01], [0.01, 0.99]])
+
+    # mean and variance for unvoiced and voiced states
+    means = np.array([[0.0], [1.0]])
+    vars = np.array([[0.25], [0.25]])
+
+    # fix the model parameters because we are not optimizing the model
+    model = hmm.GaussianHMM(n_components=2)
+    model.startprob_, model.covars_, model.transmat_, model.means_, model.n_features = \
+        starting, vars, transition, means, 1
+
+    # find the Viterbi path
+    voicing_states = model.predict(confidence.reshape(-1, 1), [len(confidence)])
+
+    return np.array(voicing_states)
+
+
 def get_activation(audio, sr, model_capacity='full', center=True, step_size=10,
                    verbose=1):
     """
@@ -271,7 +310,8 @@ def predict(audio, sr, model_capacity='full',
 
 def process_file(file, output=None, model_capacity='full', viterbi=False,
                  center=True, save_activation=False, save_plot=False,
-                 plot_voicing=False, step_size=10, verbose=True):
+                 plot_voicing=False, apply_voicing=False, step_size=10,
+                 verbose=True):
     """
     Use the input model to perform pitch estimation on the input file.
 
@@ -300,6 +340,10 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
         Include a visual representation of the voicing activity detection in
         the plot of the output activation matrix. False by default, only
         relevant if save_plot is True.
+    apply_voicing : bool
+        Apply viterbi algorithm to predict for every frame whether it was
+        voiced or unvoiced. Zero out silent frames and save the resulting
+        frequency array to a .npy file.
     step_size : int
         The step size in milliseconds for running pitch estimation.
     verbose : bool
@@ -322,6 +366,18 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
         center=center,
         step_size=step_size,
         verbose=1 * verbose)
+
+    # predict voiced and unvoiced states, zero out silent frames, and
+    # save the resulting frequency array to a .npy file
+    if apply_voicing:
+        is_voiced = predict_voicing(confidence)
+        voiced_frequency = frequency * is_voiced
+        voiced_frequency_path = output_path(file, ".voiced_frequency.npy",
+                                            output)
+        np.save(voiced_frequency_path, voiced_frequency)
+        if verbose:
+            print("CREPE: Saved the voiced frequency array at {}".format(
+                voiced_frequency_path))
 
     # write prediction as TSV
     f0_file = output_path(file, ".f0.csv", output)
