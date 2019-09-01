@@ -73,8 +73,8 @@ setup(
         'matplotlib>=2.1.0',
         'resampy>=0.2.0,<0.3.0',
         'h5py>=2.7.0,<3.0.0',
-        'hmmlearn>=0.2.0,<0.3.0',
         'imageio>=2.3.0',
+        'librosa>=0.6.2',
         'scikit-learn>=0.16'
     ],
     package_data={
