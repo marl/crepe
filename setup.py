@@ -67,7 +67,7 @@ setup(
         'Tracker': 'https://github.com/marl/crepe/issues'
     },
     install_requires=[
-        'keras==2.1.5',
+        'tensorflow==2.0',
         'numpy>=1.14.0',
         'scipy>=1.0.0',
         'matplotlib>=2.1.0',

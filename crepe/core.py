@@ -25,7 +25,7 @@ model_srate = 16000
 def build_and_load_model(model_capacity):
     """
     Build the CNN model and load the weights
-    
+
     Parameters
     ----------
     model_capacity : 'tiny', 'small', 'medium', 'large', or 'full'
@@ -38,12 +38,12 @@ def build_and_load_model(model_capacity):
 
     Returns
     -------
-    model : keras.models.Model
+    model : tensorflow.keras.models.Model
         The pre-trained keras model loaded in memory
     """
-    from keras.layers import Input, Reshape, Conv2D, BatchNormalization
-    from keras.layers import MaxPool2D, Dropout, Permute, Flatten, Dense
-    from keras.models import Model
+    from tensorflow.keras.layers import Input, Reshape, Conv2D, BatchNormalization
+    from tensorflow.keras.layers import MaxPool2D, Dropout, Permute, Flatten, Dense
+    from tensorflow.keras.models import Model
 
     if models[model_capacity] is None:
         capacity_multiplier = {
@@ -156,11 +156,11 @@ def to_viterbi_cents(salience):
 def get_activation(audio, sr, model_capacity='full', center=True, step_size=10,
                    verbose=1):
     """
-    
+
     Parameters
     ----------
     audio : np.ndarray [shape=(N,) or (N, C)]
-        The audio samples. Multichannel audio will be downmixed. 
+        The audio samples. Multichannel audio will be downmixed.
     sr : int
         Sample rate of the audio samples. The audio will be resampled if
         the sample rate is not 16 kHz, which is expected by the model.
@@ -216,11 +216,11 @@ def predict(audio, sr, model_capacity='full',
             viterbi=False, center=True, step_size=10, verbose=1):
     """
     Perform pitch estimation on given audio
-    
+
     Parameters
     ----------
     audio : np.ndarray [shape=(N,) or (N, C)]
-        The audio samples. Multichannel audio will be downmixed. 
+        The audio samples. Multichannel audio will be downmixed.
     sr : int
         Sample rate of the audio samples. The audio will be resampled if
         the sample rate is not 16 kHz, which is expected by the model.
@@ -242,7 +242,7 @@ def predict(audio, sr, model_capacity='full',
     Returns
     -------
     A 4-tuple consisting of:
-    
+
         time: np.ndarray [shape=(T,)]
             The timestamps on which the pitch was estimated
         frequency: np.ndarray [shape=(T,)]
