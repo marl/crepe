@@ -1,7 +1,9 @@
-import os
-import sys
 import bz2
 import imp
+import os
+import sys
+
+import pkg_resources
 from setuptools import setup, find_packages
 
 try:
@@ -67,15 +69,10 @@ setup(
         'Tracker': 'https://github.com/marl/crepe/issues'
     },
     install_requires=[
-        'keras==2.1.5',
-        'numpy>=1.14.0',
-        'scipy>=1.0.0',
-        'matplotlib>=2.1.0',
-        'resampy>=0.2.0,<0.3.0',
-        'h5py>=2.7.0,<3.0.0',
-        'hmmlearn>=0.2.0,<0.3.0',
-        'imageio>=2.3.0',
-        'scikit-learn>=0.16'
+        str(requirement)
+        for requirement in pkg_resources.parse_requirements(
+            open(os.path.join(os.path.dirname(__file__), "requirements.txt"))
+        )
     ],
     package_data={
         'crepe': weight_files
