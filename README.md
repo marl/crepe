@@ -19,7 +19,7 @@ We kindly request that academic publications making use of CREPE cite the aforem
 CREPE is hosted on PyPI. To install, run the following command in your Python environment:
 
 ```bash
-$ pip install --upgrade tensorflow  # if you don't already have tensorflow >= 1.6.0
+$ pip install --upgrade tensorflow  # if you don't already have tensorflow >= 2.0.0
 $ pip install crepe
 ```
 
