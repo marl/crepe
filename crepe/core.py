@@ -99,7 +99,7 @@ def to_local_average_cents(salience, center=None):
 
     if not hasattr(to_local_average_cents, 'cents_mapping'):
         # the bin number-to-cents mapping
-        to_local_average_cents.mapping = (
+        to_local_average_cents.cents_mapping = (
                 np.linspace(0, 7180, 360) + 1997.3794084376191)
 
     if salience.ndim == 1:
@@ -109,7 +109,7 @@ def to_local_average_cents(salience, center=None):
         end = min(len(salience), center + 5)
         salience = salience[start:end]
         product_sum = np.sum(
-            salience * to_local_average_cents.mapping[start:end])
+            salience * to_local_average_cents.cents_mapping[start:end])
         weight_sum = np.sum(salience)
         return product_sum / weight_sum
     if salience.ndim == 2:
