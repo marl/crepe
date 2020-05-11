@@ -1,5 +1,15 @@
-CREPE Pitch Tracker [![Build Status](https://travis-ci.org/marl/crepe.svg?branch=master)](https://travis-ci.org/marl/crepe)
+CREPE Pitch Tracker 
 ===================
+
+[![PyPI](https://img.shields.io/pypi/v/crepe.svg)](https://pypi.python.org/pypi/crepe) 
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://travis-ci.org/marl/crepe.svg?branch=master)](https://travis-ci.org/marl/crepe)
+[![Downloads](https://pepy.tech/badge/crepe)](https://pepy.tech/project/crepe)
+[![PyPI](https://img.shields.io/badge/python-3.6%2C%203.7-blue.svg)]()
+<!--[![Coverage Status](https://coveralls.io/repos/github/marl/crepe/badge.svg?branch=master)](https://coveralls.io/github/marl/crepe?branch=master)
+[![Documentation Status](https://readthedocs.org/projects/crepe/badge/?version=latest)](http://crepe.readthedocs.io/en/latest/?badge=latest)-->
+
+
 
 CREPE is a monophonic pitch tracker based on a deep convolutional neural network operating directly on the time-domain waveform input. CREPE is state-of-the-art (as of 2018), outperfoming popular pitch trackers such as pYIN and SWIPE:
 
