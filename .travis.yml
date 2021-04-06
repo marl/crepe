@@ -3,9 +3,8 @@ python:
   - "3.6"
   - "3.7"
   - "3.8"
-  - "3.9"
 install:
-  - pip install pytest tensorflow==2.4.1
+  - pip install pytest tensorflow==2.5.0rc0
   - pip install .
 script:
   - pytest
