@@ -312,9 +312,18 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
     """
     try:
         sr, audio = wavfile.read(file)
-    except ValueError:
-        print("CREPE: Could not read %s" % file, file=sys.stderr)
-        raise
+    except ValueError as wavfile_error:
+    	# scipy.wavfile cannot read 24-bit files and is in general prone to failing.
+    	# If it fails reading, let's fall back on wavio, a library that works most of the times.
+        print(wavfile_error)
+        print('CREPE: scipy.wavfile cannot read the file. Attempting with the wavio library...')
+        try:
+            import wavio
+            _f = wavio.read(file)
+            sr, audio = _f.rate, _f.data
+        except:
+            print("CREPE: Could not read %s" % file, file=sys.stderr)
+            raise
 
     time, frequency, confidence, activation = predict(
         audio, sr,
