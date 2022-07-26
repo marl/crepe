@@ -206,7 +206,7 @@ def get_activation(audio, sr, model_capacity='full', center=True, step_size=10,
 
     # normalize each frame -- this is expected by the model
     frames -= np.mean(frames, axis=1)[:, np.newaxis]
-    frames /= np.std(frames, axis=1)[:, np.newaxis]
+    frames /= np.clip(np.std(frames, axis=1)[:, np.newaxis], 1e-8, None)
 
     # run prediction and convert the frequency bin weights to Hz
     return model.predict(frames, verbose=verbose)
