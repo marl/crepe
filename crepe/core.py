@@ -141,7 +141,7 @@ def to_viterbi_cents(salience):
                 ((1 - self_emission) / 360))
 
     # fix the model parameters because we are not optimizing the model
-    model = hmm.MultinomialHMM(360, starting, transition)
+    model = hmm.CategoricalHMM(360, starting, transition)
     model.startprob_, model.transmat_, model.emissionprob_ = \
         starting, transition, emission
 
