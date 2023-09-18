@@ -1,5 +1,5 @@
 import bz2
-import imp
+from importlib.machinery import SourceFileLoader
 import os
 import sys
 
@@ -34,7 +34,8 @@ else:
                     target.write(source.read())
             print('Decompression complete')
 
-version = imp.load_source('crepe.version', os.path.join('crepe', 'version.py'))
+version = SourceFileLoader('crepe.version', os.path.join('crepe', 'version.py'))
+version = version.load_module()
 
 with open('README.md') as file:
     long_description = file.read()
