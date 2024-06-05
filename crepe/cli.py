@@ -10,7 +10,8 @@ from .core import process_file
 
 def run(filename, output=None, model_capacity='full', viterbi=False,
         save_activation=False, save_plot=False, plot_voicing=False,
-        no_centering=False, step_size=10, verbose=True):
+        apply_voicing=False, no_centering=False, step_size=10,
+        verbose=True):
     """
     Collect the WAV files to process and run the model
 
@@ -36,6 +37,10 @@ def run(filename, output=None, model_capacity='full', viterbi=False,
         Include a visual representation of the voicing activity detection in
         the plot of the output activation matrix. False by default, only
         relevant if save_plot is True.
+    apply_voicing : bool
+        Apply viterbi algorithm to predict for every frame whether it was
+        voiced or unvoiced. Zero out silent frames and save the resulting
+        frequency array to a .npy file.
     no_centering : bool
         Don't pad the signal, meaning frames will begin at their timestamp
         instead of being centered around their timestamp (which is the
@@ -81,6 +86,7 @@ def run(filename, output=None, model_capacity='full', viterbi=False,
                      save_activation=save_activation,
                      save_plot=save_plot,
                      plot_voicing=plot_voicing,
+                     apply_voicing=apply_voicing,
                      step_size=step_size,
                      verbose=verbose)
 
@@ -143,6 +149,11 @@ def main():
     parser.add_argument('--plot-voicing', '-v', action='store_true',
                         help='Plot the voicing prediction on top of the '
                              'output activation matrix plot')
+    parser.add_argument('--apply-voicing', '-P', action='store_true',
+                        help='Apply viterbi algorithm to predict for every '
+                             'frame whether it was voiced or unvoiced. Zero '
+                             'out silent frames and save the resulting '
+                             'frequency array to a .npy file.')
     parser.add_argument('--no-centering', '-n', action='store_true',
                         help="Don't pad the signal, meaning frames will begin "
                              "at their timestamp instead of being centered "
@@ -168,6 +179,7 @@ def main():
         save_activation=args.save_activation,
         save_plot=args.save_plot,
         plot_voicing=args.plot_voicing,
+        apply_voicing=args.apply_voicing,
         no_centering=args.no_centering,
         step_size=args.step_size,
         verbose=not args.quiet)
