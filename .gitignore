@@ -22,3 +22,5 @@ build
 
 crepe/model-*.h5
 crepe/model-*.h5.bz2
+
+model.onnx

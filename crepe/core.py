@@ -364,3 +364,32 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
         if verbose:
             print("CREPE: Saved the salience plot at {}".format(plot_file))
 
+
+def export_model_to_onnx(model_capacity='full', output_path='model.onnx', opset=13):
+    """
+    Export a CREPE model to ONNX format
+    
+    Parameters
+    ----------
+    model_capacity : 'tiny', 'small', 'medium', 'large', or 'full'
+        String specifying the model capacity to export
+    output_path : str
+        Path where the ONNX model will be saved
+    opset : int
+        ONNX opset version to use for conversion
+        
+    Returns
+    -------
+    None
+    """
+    import tensorflow as tf
+    import tf2onnx
+    
+    model = build_and_load_model(model_capacity)
+    spec = (tf.TensorSpec((None, 1024), tf.float32, name="input"),)
+    onnx_model, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=opset)
+    
+    with open(output_path, "wb") as f:
+        f.write(onnx_model.SerializeToString())
+    
+    print(f"CREPE: Exported {model_capacity} model to {output_path}")
