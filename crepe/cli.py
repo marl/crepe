@@ -9,6 +9,7 @@ from .core import process_file
 
 
 def run(filename, output=None, model_capacity='full', viterbi=False,
+        viterbi_impl='legacy',
         save_activation=False, save_plot=False, plot_voicing=False,
         no_centering=False, step_size=10, verbose=True):
     """
@@ -27,6 +28,8 @@ def run(filename, output=None, model_capacity='full', viterbi=False,
         :func:`~crepe.core.build_and_load_model`
     viterbi : bool
         Apply viterbi smoothing to the estimated pitch curve. False by default.
+    viterbi_impl : {'legacy', 'fast'}
+        Implementation used when `viterbi=True`.
     save_activation : bool
         Save the output activation matrix to an .npy file. False by default.
     save_plot: bool
@@ -77,6 +80,7 @@ def run(filename, output=None, model_capacity='full', viterbi=False,
         process_file(file, output=output,
                      model_capacity=model_capacity,
                      viterbi=viterbi,
+                     viterbi_impl=viterbi_impl,
                      center=(not no_centering),
                      save_activation=save_activation,
                      save_plot=save_plot,
@@ -134,6 +138,9 @@ def main():
     parser.add_argument('--viterbi', '-V', action='store_true',
                         help='perform Viterbi decoding to smooth the pitch '
                              'curve')
+    parser.add_argument('--viterbi-impl', default='legacy',
+                        choices=['legacy', 'fast'],
+                        help='implementation used when --viterbi is enabled')
     parser.add_argument('--save-activation', '-a', action='store_true',
                         help='save the output activation matrix to a .npy '
                              'file')
@@ -165,6 +172,7 @@ def main():
         output=args.output,
         model_capacity=args.model_capacity,
         viterbi=args.viterbi,
+        viterbi_impl=args.viterbi_impl,
         save_activation=args.save_activation,
         save_plot=args.save_plot,
         plot_voicing=args.plot_voicing,
