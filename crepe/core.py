@@ -21,6 +21,8 @@ models = {
 # the model is trained on 16kHz audio
 model_srate = 16000
 
+viterbi_impls = ('legacy', 'fast')
+
 
 def build_and_load_model(model_capacity):
     """
@@ -124,6 +126,25 @@ def to_viterbi_cents(salience):
     Find the Viterbi path using a transition prior that induces pitch
     continuity.
     """
+    return to_viterbi_cents_impl(salience, impl='legacy')
+
+
+def to_viterbi_cents_impl(salience, impl='legacy'):
+    """
+    Find the Viterbi path using the requested implementation.
+    """
+    if impl == 'legacy':
+        return to_viterbi_cents_legacy(salience)
+    if impl == 'fast':
+        return to_viterbi_cents_fast(salience)
+    raise ValueError('expected viterbi_impl to be one of {}, got {}'.format(
+        viterbi_impls, impl))
+
+
+def to_viterbi_cents_legacy(salience):
+    """
+    Legacy hmmlearn-backed Viterbi smoothing path.
+    """
     from hmmlearn import hmm
 
     # uniform prior on the starting pitch
@@ -151,6 +172,86 @@ def to_viterbi_cents(salience):
 
     return np.array([to_local_average_cents(salience[i, :], path[i]) for i in
                      range(len(observations))])
+
+
+def to_viterbi_cents_fast(salience):
+    """
+    Exact structured Viterbi smoothing path for CREPE's local transition graph.
+    """
+    observations = np.argmax(salience, axis=1).astype(np.int64, copy=False)
+    path = _viterbi_path_fast(observations)
+    return np.array([to_local_average_cents(salience[i, :], path[i]) for i in
+                     range(len(observations))])
+
+
+def _viterbi_fast_structure():
+    """
+    Precompute the exact local predecessor structure for CREPE's transition.
+    """
+    cached = getattr(_viterbi_fast_structure, 'cached', None)
+    if cached is not None:
+        return cached
+
+    states = 360
+    starting = np.ones(states, dtype=np.float64) / states
+
+    xx, yy = np.meshgrid(range(states), range(states))
+    transition = np.maximum(12 - abs(xx - yy), 0).astype(np.float64)
+    transition = transition / np.sum(transition, axis=1)[:, None]
+
+    self_emission = 0.1
+    emission = (np.eye(states, dtype=np.float64) * self_emission +
+                np.ones(shape=(states, states), dtype=np.float64) *
+                ((1 - self_emission) / states))
+
+    valid = transition > 0
+    width = int(np.max(np.sum(valid, axis=0)))
+    source_idx = np.zeros((states, width), dtype=np.int16)
+    log_trans = np.full((states, width), -np.inf, dtype=np.float64)
+
+    for target in range(states):
+        sources = np.flatnonzero(valid[:, target]).astype(np.int16)
+        source_idx[target, :len(sources)] = sources
+        log_trans[target, :len(sources)] = np.log(
+            transition[sources.astype(np.int64), target])
+
+    cached = {
+        'state_idx': np.arange(states, dtype=np.int64),
+        'log_starting': np.log(starting),
+        'source_idx': source_idx,
+        'log_trans': log_trans,
+        'log_emission': np.log(emission)
+    }
+    _viterbi_fast_structure.cached = cached
+    return cached
+
+
+def _viterbi_path_fast(observations):
+    """
+    Exact structured Viterbi decode of CREPE's argmax observations.
+    """
+    structure = _viterbi_fast_structure()
+    source_idx = structure['source_idx']
+    log_trans = structure['log_trans']
+    state_idx = structure['state_idx']
+    log_emission = structure['log_emission']
+
+    prev = structure['log_starting'] + log_emission[observations[0]]
+    backpointers = np.empty((len(observations), 360), dtype=np.int16)
+    backpointers[0] = np.arange(360, dtype=np.int16)
+
+    for frame, observation in enumerate(observations[1:], start=1):
+        candidates = prev[source_idx] + log_trans
+        best_offsets = np.argmax(candidates, axis=1)
+        best_sources = source_idx[state_idx, best_offsets]
+        backpointers[frame] = best_sources
+        prev = candidates[state_idx, best_offsets] + log_emission[observation]
+
+    path = np.empty((len(observations),), dtype=np.int16)
+    path[-1] = int(np.argmax(prev))
+    for frame in range(len(observations) - 1, 0, -1):
+        path[frame - 1] = backpointers[frame, path[frame]]
+    return path
 
 
 def get_activation(audio, sr, model_capacity='full', center=True, step_size=10,
@@ -213,7 +314,8 @@ def get_activation(audio, sr, model_capacity='full', center=True, step_size=10,
 
 
 def predict(audio, sr, model_capacity='full',
-            viterbi=False, center=True, step_size=10, verbose=1):
+            viterbi=False, center=True, step_size=10, verbose=1,
+            viterbi_impl='legacy'):
     """
     Perform pitch estimation on given audio
 
@@ -229,6 +331,9 @@ def predict(audio, sr, model_capacity='full',
         :func:`~crepe.core.build_and_load_model`
     viterbi : bool
         Apply viterbi smoothing to the estimated pitch curve. False by default.
+    viterbi_impl : {'legacy', 'fast'}
+        Implementation used when `viterbi=True`. Defaults to the current
+        `hmmlearn` path (`legacy`).
     center : boolean
         - If `True` (default), the signal `audio` is padded so that frame
           `D[:, t]` is centered at `audio[t * hop_length]`.
@@ -258,7 +363,7 @@ def predict(audio, sr, model_capacity='full',
     confidence = activation.max(axis=1)
 
     if viterbi:
-        cents = to_viterbi_cents(activation)
+        cents = to_viterbi_cents_impl(activation, impl=viterbi_impl)
     else:
         cents = to_local_average_cents(activation)
 
@@ -272,7 +377,8 @@ def predict(audio, sr, model_capacity='full',
 
 def process_file(file, output=None, model_capacity='full', viterbi=False,
                  center=True, save_activation=False, save_plot=False,
-                 plot_voicing=False, step_size=10, verbose=True):
+                 plot_voicing=False, step_size=10, verbose=True,
+                 viterbi_impl='legacy'):
     """
     Use the input model to perform pitch estimation on the input file.
 
@@ -288,6 +394,8 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
         :func:`~crepe.core.build_and_load_model`
     viterbi : bool
         Apply viterbi smoothing to the estimated pitch curve. False by default.
+    viterbi_impl : {'legacy', 'fast'}
+        Implementation used when `viterbi=True`.
     center : boolean
         - If `True` (default), the signal `audio` is padded so that frame
           `D[:, t]` is centered at `audio[t * hop_length]`.
@@ -320,6 +428,7 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
         audio, sr,
         model_capacity=model_capacity,
         viterbi=viterbi,
+        viterbi_impl=viterbi_impl,
         center=center,
         step_size=step_size,
         verbose=1 * verbose)
@@ -363,4 +472,3 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
         imwrite(plot_file, (255 * image).astype(np.uint8))
         if verbose:
             print("CREPE: Saved the salience plot at {}".format(plot_file))
-
