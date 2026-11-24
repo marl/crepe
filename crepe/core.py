@@ -168,11 +168,11 @@ def get_activation(audio, sr, model_capacity='full', center=True, step_size=10,
         String specifying the model capacity; see the docstring of
         :func:`~crepe.core.build_and_load_model`
     center : boolean
-        - If `True` (default), the signal `audio` is padded so that frame
-          `D[:, t]` is centered at `audio[t * hop_length]`.
-        - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
-    step_size : int
-        The step size in milliseconds for running pitch estimation.
+        Center each frame at its timestamp (default), or start it there.
+    step_size : int or float
+        Interval between frames in milliseconds, at least one 16 kHz sample
+        (0.0625 ms). Each timestamp is rounded to the nearest model sample
+        to locate the frame.
     verbose : int
         Set the keras verbosity mode: 1 (default) will print out a progress bar
         during prediction, 0 will suppress all non-error printouts.
@@ -197,12 +197,21 @@ def get_activation(audio, sr, model_capacity='full', center=True, step_size=10,
     if center:
         audio = np.pad(audio, 512, mode='constant', constant_values=0)
 
-    # make 1024-sample frames of the audio with hop length of 10 milliseconds
-    hop_length = int(model_srate * step_size / 1000)
-    n_frames = 1 + int((len(audio) - 1024) / hop_length)
-    frames = as_strided(audio, shape=(1024, n_frames),
-                        strides=(audio.itemsize, hop_length * audio.itemsize))
-    frames = frames.transpose().copy()
+    hop_length = step_size * (model_srate / 1000.0)
+    if not np.isfinite(hop_length) or hop_length < 1:
+        raise ValueError("step_size must be finite and span at least one model sample")
+    last_start = len(audio) - 1024
+    if last_start < 0:
+        raise ValueError("At least 1024 samples at 16 kHz are required without centering")
+
+    if hop_length.is_integer():
+        hop = int(hop_length)
+        frames = as_strided(audio, shape=(1 + last_start // hop, 1024),
+                            strides=(hop * audio.itemsize, audio.itemsize)).copy()
+    else:
+        # Round each position independently so sub-sample errors don't accumulate.
+        starts = np.rint(np.arange(0, last_start + 1, hop_length)).astype(np.intp)
+        frames = np.stack([audio[s:s + 1024] for s in starts if s <= last_start])
 
     # normalize each frame -- this is expected by the model
     frames -= np.mean(frames, axis=1)[:, np.newaxis]
@@ -230,11 +239,10 @@ def predict(audio, sr, model_capacity='full',
     viterbi : bool
         Apply viterbi smoothing to the estimated pitch curve. False by default.
     center : boolean
-        - If `True` (default), the signal `audio` is padded so that frame
-          `D[:, t]` is centered at `audio[t * hop_length]`.
-        - If `False`, then `D[:, t]` begins at `audio[t * hop_length]`
-    step_size : int
-        The step size in milliseconds for running pitch estimation.
+        Center each frame at its timestamp (default), or start it there.
+    step_size : int or float
+        Interval between timestamps in milliseconds. See
+        :func:`~crepe.core.get_activation` for sample rounding and minimum step.
     verbose : int
         Set the keras verbosity mode: 1 (default) will print out a progress bar
         during prediction, 0 will suppress all non-error printouts.
@@ -244,7 +252,7 @@ def predict(audio, sr, model_capacity='full',
     A 4-tuple consisting of:
 
         time: np.ndarray [shape=(T,)]
-            The timestamps on which the pitch was estimated
+            The requested timestamps in seconds, before rounding to samples
         frequency: np.ndarray [shape=(T,)]
             The predicted pitch values in Hz
         confidence: np.ndarray [shape=(T,)]
